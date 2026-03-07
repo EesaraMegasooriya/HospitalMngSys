@@ -17,7 +17,6 @@ const dietCycleRoutes = require("./routes/dietCycleRoutes");
 const dietTypeRoutes = require("./routes/dietTypesRoutes");
 
 
-
 const itemsRoutes = require("./routes/itemsRoutes");
 
 const app = express();

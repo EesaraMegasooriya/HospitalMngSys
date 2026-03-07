@@ -205,3 +205,20 @@ exports.submitStaffMeals = async (req, res) => {
     res.status(500).json({ message: "Failed to submit staff meals" });
   }
 };
+
+exports.getMySubmissions = async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ message: "date is required" });
+    }
+
+    const submissions = await censusModel.getSubmissionsByDate(date);
+
+    res.status(200).json({ submissions });
+  } catch (error) {
+    console.error("GET MY SUBMISSIONS ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch submissions" });
+  }
+};
