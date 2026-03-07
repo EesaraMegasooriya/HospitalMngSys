@@ -1,225 +1,207 @@
-const censusModel = require("../models/CensusModel");
+const censusModel = require("../models/censusModel");
 const { writeAudit } = require("../utils/audit");
 
-// GET /api/census
-exports.getCensusList = async (req, res) => {
+exports.getWardCensus = async (req, res) => {
   try {
-    const { date, wardId } = req.query;
-    const censusData = await censusModel.getAllCensus(date, wardId);
-
-    await writeAudit({
-      req,
-      action: "GET_CENSUS",
-      entity: "ward_census",
-      details: { count: censusData.length, filters: { date, wardId } },
-      severity: "info",
-      status_code: 200,
-      success: true,
-    });
-
-    res.status(200).json({ census: censusData });
-  } catch (error) {
-    console.error("GET CENSUS ERROR:", error);
-
-    await writeAudit({
-      req,
-      action: "GET_CENSUS",
-      entity: "ward_census",
-      details: { error: error.message },
-      severity: "warning",
-      status_code: 500,
-      success: false,
-    });
-
-    res.status(500).json({ message: "Failed to fetch census data" });
-  }
-};
-
-// POST /api/census
-exports.createCensus = async (req, res) => {
-  try {
-    const { wardId, date, diets, staff, special, extras, customExtras, status, totalPatients } = req.body;
+    const { wardId } = req.params;
+    const { date } = req.query;
 
     if (!wardId || !date) {
-      await writeAudit({
-        req,
-        action: "CREATE_CENSUS",
-        entity: "ward_census",
-        details: { error: "wardId and date are required" },
-        severity: "warning",
-        status_code: 400,
-        success: false,
-      });
-
       return res.status(400).json({ message: "wardId and date are required" });
     }
 
-    const newCensus = await censusModel.createCensus({
-      wardId, date, diets, staff, special, extras, customExtras, status, totalPatients
-    });
+    const census = await censusModel.getWardCensusByDate(wardId, date);
 
-    await writeAudit({
-      req,
-      action: "CREATE_CENSUS",
-      entity: "ward_census",
-      entity_id: String(newCensus.id),
-      new_value: newCensus,
-      details: { message: "Census created successfully", wardId, date },
-      severity: "info",
-      status_code: 201,
-      success: true,
-    });
-
-    res.status(201).json({
-      message: "Census created successfully",
-      census: newCensus,
-    });
+    res.status(200).json({ census });
   } catch (error) {
-    console.error("CREATE CENSUS ERROR:", error);
-
-    await writeAudit({
-      req,
-      action: "CREATE_CENSUS",
-      entity: "ward_census",
-      details: { error: error.message, wardId: req.body?.wardId || null },
-      severity: "error",
-      status_code: error.code === "23505" ? 409 : 500,
-      success: false,
-    });
-
-    if (error.code === "23505") {
-      return res.status(409).json({ message: "Census for this ward and date already exists" });
-    }
-
-    res.status(500).json({ message: "Failed to create census" });
+    console.error("GET WARD CENSUS ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch ward census" });
   }
 };
 
-// PUT /api/census/:id
-exports.updateCensus = async (req, res) => {
+exports.getWardStatuses = async (req, res) => {
   try {
-    const { id } = req.params;
-    const data = req.body;
+    const { date } = req.query;
 
-    const oldCensus = await censusModel.getCensusById(id);
-
-    if (!oldCensus) {
-      await writeAudit({
-        req,
-        action: "UPDATE_CENSUS",
-        entity: "ward_census",
-        entity_id: String(id),
-        details: { error: "Census record not found" },
-        severity: "warning",
-        status_code: 404,
-        success: false,
-      });
-
-      return res.status(404).json({ message: "Census not found" });
+    if (!date) {
+      return res.status(400).json({ message: "date is required" });
     }
 
-    if (oldCensus.status === 'locked') {
-        return res.status(403).json({ message: "Cannot edit a locked census" });
+    const statuses = await censusModel.getAllWardCensusStatusesByDate(date);
+    res.status(200).json({ statuses });
+  } catch (error) {
+    console.error("GET CENSUS STATUSES ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch census statuses" });
+  }
+};
+
+exports.saveWardCensusDraft = async (req, res) => {
+  try {
+    const {
+      wardId,
+      date,
+      diets = {},
+      special = {},
+      extras = {},
+      customExtras = [],
+    } = req.body;
+
+    if (!wardId || !date) {
+      return res.status(400).json({ message: "wardId and date are required" });
     }
 
-    const updatedCensus = await censusModel.updateCensus(id, data);
+    const totalPatients = Object.values(diets).reduce(
+      (sum, value) => sum + (Number(value) || 0),
+      0
+    );
+
+    const census = await censusModel.upsertWardCensus({
+      wardId,
+      entryDate: date,
+      status: "draft",
+      totalPatients,
+      diets,
+      special,
+      extras,
+      customExtras,
+    });
 
     await writeAudit({
       req,
-      action: "UPDATE_CENSUS",
-      entity: "ward_census",
-      entity_id: String(id),
-      old_value: oldCensus,
-      new_value: updatedCensus,
-      details: { message: "Census updated successfully" },
+      action: "SAVE_CENSUS_DRAFT",
+      entity: "census_entries",
+      entity_id: `${wardId}_${date}`,
+      new_value: census,
+      details: { wardId, date, totalPatients },
       severity: "info",
       status_code: 200,
       success: true,
     });
 
     res.status(200).json({
-      message: "Census updated successfully",
-      census: updatedCensus,
+      message: "Census draft saved successfully",
+      census,
     });
   } catch (error) {
-    console.error("UPDATE CENSUS ERROR:", error);
-
-    await writeAudit({
-      req,
-      action: "UPDATE_CENSUS",
-      entity: "ward_census",
-      entity_id: String(req.params?.id),
-      details: { error: error.message },
-      severity: "error",
-      status_code: 500,
-      success: false,
-    });
-
-    res.status(500).json({ message: "Failed to update census" });
+    console.error("SAVE CENSUS DRAFT ERROR:", error);
+    res.status(500).json({ message: "Failed to save census draft" });
   }
 };
 
-// PATCH /api/census/:id/status
-exports.updateCensusStatus = async (req, res) => {
+exports.submitWardCensus = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body;
+    const {
+      wardId,
+      date,
+      diets = {},
+      special = {},
+      extras = {},
+      customExtras = [],
+    } = req.body;
 
-    const validStatuses = ["draft", "submitted", "locked"];
-    if (!validStatuses.includes(status)) {
-      await writeAudit({
-        req,
-        action: "CHANGE_CENSUS_STATUS",
-        entity: "ward_census",
-        entity_id: String(id),
-        details: { error: "Invalid status value", received: status },
-        severity: "warning",
-        status_code: 400,
-        success: false,
-      });
-
-      return res.status(400).json({ message: "Invalid status value" });
+    if (!wardId || !date) {
+      return res.status(400).json({ message: "wardId and date are required" });
     }
 
-    const oldCensus = await censusModel.getCensusById(id);
+    const totalPatients = Object.values(diets).reduce(
+      (sum, value) => sum + (Number(value) || 0),
+      0
+    );
 
-    if (!oldCensus) {
-      return res.status(404).json({ message: "Census not found" });
-    }
-
-    const updatedCensus = await censusModel.updateCensusStatus(id, status);
+    const census = await censusModel.upsertWardCensus({
+      wardId,
+      entryDate: date,
+      status: "submitted",
+      totalPatients,
+      diets,
+      special,
+      extras,
+      customExtras,
+      submittedBy: req.user?.id || null,
+      submittedAt: new Date(),
+    });
 
     await writeAudit({
       req,
-      action: "CHANGE_CENSUS_STATUS",
-      entity: "ward_census",
-      entity_id: String(id),
-      old_value: { status: oldCensus.status },
-      new_value: { status: updatedCensus.status },
-      details: { message: `Census status changed to ${status}` },
+      action: "SUBMIT_CENSUS",
+      entity: "census_entries",
+      entity_id: `${wardId}_${date}`,
+      new_value: census,
+      details: { wardId, date, totalPatients },
       severity: "info",
       status_code: 200,
       success: true,
     });
 
     res.status(200).json({
-      message: "Census status updated successfully",
-      census: updatedCensus,
+      message: "Ward census submitted successfully",
+      census,
     });
   } catch (error) {
-    console.error("TOGGLE CENSUS STATUS ERROR:", error);
+    console.error("SUBMIT CENSUS ERROR:", error);
+    res.status(500).json({ message: "Failed to submit ward census" });
+  }
+};
+
+exports.getStaffMeals = async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ message: "date is required" });
+    }
+
+    const staffMeals = await censusModel.getStaffMealsByDate(date);
+    res.status(200).json({ staffMeals });
+  } catch (error) {
+    console.error("GET STAFF MEALS ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch staff meals" });
+  }
+};
+
+exports.submitStaffMeals = async (req, res) => {
+  try {
+    const {
+      date,
+      breakfast = 0,
+      lunch = 0,
+      dinner = 0,
+      staffCycle = "Chicken",
+    } = req.body;
+
+    if (!date) {
+      return res.status(400).json({ message: "date is required" });
+    }
+
+    const staffMeals = await censusModel.upsertStaffMeals({
+      mealDate: date,
+      breakfast,
+      lunch,
+      dinner,
+      staffCycle,
+      status: "submitted",
+      submittedBy: req.user?.id || null,
+      submittedAt: new Date(),
+    });
 
     await writeAudit({
       req,
-      action: "CHANGE_CENSUS_STATUS",
-      entity: "ward_census",
-      entity_id: String(req.params?.id),
-      details: { error: error.message },
-      severity: "error",
-      status_code: 500,
-      success: false,
+      action: "SUBMIT_STAFF_MEALS",
+      entity: "staff_meals",
+      entity_id: date,
+      new_value: staffMeals,
+      details: { date, breakfast, lunch, dinner },
+      severity: "info",
+      status_code: 200,
+      success: true,
     });
 
-    res.status(500).json({ message: "Failed to update census status" });
+    res.status(200).json({
+      message: "Staff meals submitted successfully",
+      staffMeals,
+    });
+  } catch (error) {
+    console.error("SUBMIT STAFF MEALS ERROR:", error);
+    res.status(500).json({ message: "Failed to submit staff meals" });
   }
 };
