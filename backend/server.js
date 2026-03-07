@@ -10,9 +10,8 @@ const hospitalAdminRoutes = require("./routes/hospitalAdminRoutes");
 const wardsRoutes = require("./routes/wardsRoutes");
 const { auditRequestMiddleware } = require("./middleware/auditRequestMiddleware");
 const dietPlansRoutes = require("./routes/dietPlansRoutes");
-
-const itemsRoutes = require("./routes/itemsRoutes");
-
+const censusRoutes = require("./routes/censusRoutes");
+const dietCycleRoutes = require("./routes/dietCycleRoutes");
 
 const app = express();
 
@@ -36,6 +35,8 @@ app.use("/api/audit", auditRoutes);
 app.use("/api", hospitalAdminRoutes);
 app.use("/api/wards", wardsRoutes);
 app.use("/api/diet-plans", dietPlansRoutes);
+app.use("/api/census", censusRoutes);
+app.use("/api/diet-cycles", dietCycleRoutes);
 
 app.use("/api/items", itemsRoutes);
 
