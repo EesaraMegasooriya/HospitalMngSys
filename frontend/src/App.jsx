@@ -38,6 +38,8 @@ import Backups from "@/pages/Backups";
 import SystemSettings from "@/pages/SystemSettings";
 import NotFound from "@/pages/NotFound";
 
+import Register from "@/pages/Register"
+
 const queryClient = new QueryClient();
 
 const ProtectedPage = ({ children }) => (
@@ -60,6 +62,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/dashboard" element={<P><Dashboard /></P>} />
+            <Route path="/register" element={<Register/>}/>
             {/* Diet Clerk */}
             <Route path="/census" element={<P><CensusEntry /></P>} />
             <Route path="/census/submissions" element={<P><CensusSubmissions /></P>} />
