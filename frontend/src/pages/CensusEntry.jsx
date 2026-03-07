@@ -375,9 +375,10 @@ const CensusEntryPage = () => {
                   <CardTitle className="text-heading-sm">Special Requests</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     {[
-                      { key: "soupKanda", label: "Soup / Kanda" },
+                      { key: "soupKanda", label: "Soup" },
+                      { key: "kanda", label: "Kanda" },
                       { key: "polSambola", label: "Pol Sambola" },
                     ].map((item) => {
                       const idx = refIdx++;
