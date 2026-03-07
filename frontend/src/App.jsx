@@ -55,6 +55,8 @@ function App() {
         }
       />
 
+      
+
       <Route path="*" element={<h2 style={{ padding: 20 }}>404 - Page Not Found</h2>} />
     </Routes>
   );

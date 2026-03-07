@@ -14,7 +14,7 @@ const dietPlansRoutes = require("./routes/dietPlansRoutes");
 
 const app = express();
 
-/* ✅ CORS (do NOT use app.options("*") / "/*" on your setup) */
+/* CORS (do NOT use app.options("*") / "/*" on your setup) */
 app.use(
   cors({
     origin: "http://localhost:5173",
