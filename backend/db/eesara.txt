@@ -35,3 +35,5 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     status_code INTEGER,
     success BOOLEAN NOT NULL DEFAULT true
 );
+ALTER TABLE audit_logs
+ADD COLUMN endpoint TEXT;
