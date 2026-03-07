@@ -271,9 +271,9 @@ function App() {
               <Route
                 path="/system/users"
                 element={
-                  <AppLayout>
+                 
                     <SystemUsers />
-                  </AppLayout>
+                  
                 }
               />
               <Route

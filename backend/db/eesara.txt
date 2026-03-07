@@ -1,0 +1,19 @@
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role VARCHAR(30) NOT NULL CHECK (
+        role IN (
+            'SYSTEM_ADMIN',
+            'HOSPITAL_ADMIN',
+            'DIET_CLERK',
+            'SUBJECT_CLERK',
+            'ACCOUNTANT',
+            'KITCHEN'
+        )
+    ),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
