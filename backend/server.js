@@ -14,7 +14,9 @@ const censusRoutes = require("./routes/censusRoutes");
 
 const recipesRoutes = require("./routes/recipesRoutes");
 const dietCycleRoutes = require("./routes/dietCycleRoutes");
-const dietTypeRoutes = require("./routes/dietTypeRoutes");
+const dietTypeRoutes = require("./routes/dietTypesRoutes");
+
+
 
 const itemsRoutes = require("./routes/itemsRoutes");
 
