@@ -13,6 +13,8 @@ const dietPlansRoutes = require("./routes/dietPlansRoutes");
 const censusRoutes = require("./routes/censusRoutes");
 const dietCycleRoutes = require("./routes/dietCycleRoutes");
 
+const itemsRoutes = require("./routes/itemsRoutes");
+
 const app = express();
 
 /* ✅ CORS (do NOT use app.options("*") / "/*" on your setup) */
