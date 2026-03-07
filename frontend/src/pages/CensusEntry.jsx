@@ -7,11 +7,24 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertTriangle,
@@ -30,6 +43,7 @@ import { cn } from "@/lib/utils";
 const API_BASE = "http://localhost:5050/api/census";
 const WARDS_API = "http://localhost:5050/api/wards";
 const ITEMS_API = "http://localhost:5050/api/items";
+const DIET_TYPES_API = "http://localhost:5050/api/diet-types";
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");
@@ -41,17 +55,6 @@ const getAuthHeaders = () => {
 
 const today = new Date().toISOString().split("T")[0];
 
-const DIET_FIELDS = [
-  { key: "normal", label: "Normal Diet" },
-  { key: "soft", label: "Soft Diet" },
-  { key: "liquid", label: "Liquid Diet" },
-  { key: "lowSalt", label: "Low Salt" },
-  { key: "diabetic", label: "Diabetic" },
-  { key: "renal", label: "Renal" },
-  { key: "nasogastric", label: "Nasogastric" },
-  { key: "other", label: "Other" },
-];
-
 const statusConfig = {
   not_started: { label: "Not Submitted", className: "bg-muted text-muted-foreground" },
   draft: { label: "Draft", className: "bg-warning-bg text-warning" },
@@ -59,8 +62,10 @@ const statusConfig = {
   locked: { label: "Locked", className: "bg-destructive/10 text-destructive" },
 };
 
-const NumField = ({ value, onChange, onEnter, inputRef, min = 0, className = "" }) => {
-  const handleKey = (e) => {
+const getDietKey = (diet) => String(diet.code || diet.id);
+
+const NumField = ({ value, onChange, onEnter, inputRef, className = "" }) => {
+  const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       onEnter?.();
@@ -70,15 +75,16 @@ const NumField = ({ value, onChange, onEnter, inputRef, min = 0, className = "" 
   return (
     <Input
       ref={inputRef}
-      type="number"
+      type="text"
       inputMode="numeric"
-      min={min}
-      value={value || ""}
+      value={value ?? ""}
       onChange={(e) => {
-        const v = parseInt(e.target.value, 10);
-        onChange(isNaN(v) ? 0 : Math.max(min, v));
+        const raw = e.target.value;
+        if (/^\d*$/.test(raw)) {
+          onChange(raw);
+        }
       }}
-      onKeyDown={handleKey}
+      onKeyDown={handleKeyDown}
       className={`h-11 text-input text-center w-24 touch-target ${className}`}
     />
   );
@@ -92,18 +98,21 @@ const CensusEntryPage = () => {
   const [wards, setWards] = useState([]);
   const [wardStatuses, setWardStatuses] = useState([]);
   const [extraItemsMaster, setExtraItemsMaster] = useState([]);
+  const [dietTypes, setDietTypes] = useState([]);
 
   const [wardId, setWardId] = useState("");
   const [wardSearchOpen, setWardSearchOpen] = useState(false);
 
-  const [diets, setDiets] = useState(() =>
-    Object.fromEntries(DIET_FIELDS.map((f) => [f.key, 0]))
-  );
-  const [special, setSpecial] = useState({ soup: 0, kanda: 0, polSambola: 0 });
+  const [diets, setDiets] = useState({});
+  const [special, setSpecial] = useState({ soup: "", kanda: "", polSambola: "" });
   const [extras, setExtras] = useState({});
   const [customExtras, setCustomExtras] = useState([]);
 
-  const [staffMeals, setStaffMeals] = useState({ breakfast: 0, lunch: 0, dinner: 0 });
+  const [staffMeals, setStaffMeals] = useState({
+    breakfast: "",
+    lunch: "",
+    dinner: "",
+  });
   const [staffSubmitted, setStaffSubmitted] = useState(false);
 
   const [status, setStatus] = useState("not_started");
@@ -115,31 +124,46 @@ const CensusEntryPage = () => {
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [newItem, setNewItem] = useState({ name: "", quantity: 0, unit: "Pcs" });
+  const [newItem, setNewItem] = useState({ name: "", quantity: "", unit: "Pcs" });
 
   const inputRefs = useRef([]);
+
   const focusNext = (idx) => {
     const next = inputRefs.current[idx + 1];
     next?.focus();
   };
+
   const registerRef = (idx) => (el) => {
     inputRefs.current[idx] = el;
   };
 
-  const ward = useMemo(() => wards.find((w) => String(w.id) === String(wardId)), [wards, wardId]);
-  const capacity = ward ? (Number(ward.beds || 0) + Number(ward.cots || 0) + Number(ward.icu || 0) + Number(ward.incubators || 0)) : 0;
+  const ward = useMemo(
+    () => wards.find((w) => String(w.id) === String(wardId)),
+    [wards, wardId]
+  );
+
+  const capacity = ward
+    ? Number(ward.beds || 0) +
+      Number(ward.cots || 0) +
+      Number(ward.icu || 0) +
+      Number(ward.incubators || 0)
+    : 0;
 
   const submittedCount = wardStatuses.filter(
     (w) => w.status === "submitted" || w.status === "locked"
   ).length;
-  const submissionPct = wards.length ? Math.round((submittedCount / wards.length) * 100) : 0;
 
-  const totalPatients = useMemo(
-    () => Object.values(diets).reduce((s, v) => s + (Number(v) || 0), 0),
-    [diets]
-  );
+  const submissionPct = wards.length
+    ? Math.round((submittedCount / wards.length) * 100)
+    : 0;
 
-  const capacityPercent = capacity > 0 ? Math.min((totalPatients / capacity) * 100, 120) : 0;
+  const totalPatients = useMemo(() => {
+    return Object.values(diets).reduce((sum, value) => sum + (parseInt(value, 10) || 0), 0);
+  }, [diets]);
+
+  const capacityPercent =
+    capacity > 0 ? Math.min((totalPatients / capacity) * 100, 120) : 0;
+
   const overCapacity = totalPatients > capacity && capacity > 0;
 
   const progressColor = overCapacity
@@ -150,8 +174,16 @@ const CensusEntryPage = () => {
 
   const isReadOnly = status === "submitted" || status === "locked";
 
-  const normalizeWardStatuses = (statusesFromApi) => {
-    return wards.map((w) => {
+  const buildEmptyDiets = useCallback((types) => {
+    return Object.fromEntries((types || []).map((diet) => [getDietKey(diet), ""]));
+  }, []);
+
+  const initExtrasObject = useCallback((itemsList) => {
+    return Object.fromEntries((itemsList || []).map((i) => [i.name, ""]));
+  }, []);
+
+  const normalizeWardStatuses = useCallback((statusesFromApi, wardsSource = wards) => {
+    return wardsSource.map((w) => {
       const sub = statusesFromApi.find((s) => String(s.wardId) === String(w.id));
       return {
         ward: w,
@@ -159,6 +191,36 @@ const CensusEntryPage = () => {
         totalPatients: sub?.totalPatients || 0,
       };
     });
+  }, [wards]);
+
+  const toNumberObject = (obj) =>
+    Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, parseInt(v, 10) || 0])
+    );
+
+  const toCustomExtrasPayload = (items) =>
+    items.map((item) => ({
+      ...item,
+      quantity: parseInt(item.quantity, 10) || 0,
+    }));
+
+  const fetchDietTypes = async () => {
+    const res = await fetch(DIET_TYPES_API, {
+      headers: getAuthHeaders(),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to fetch diet types");
+    }
+
+    return (data.dietTypes || []).map((diet) => ({
+      ...diet,
+      code: diet.code || String(diet.id),
+      nameEn: diet.nameEn || diet.name_en || diet.name || "Unnamed Diet",
+      nameSi: diet.nameSi || diet.name_si || "",
+      tooltip: diet.tooltip || "",
+    }));
   };
 
   const fetchWards = async () => {
@@ -181,6 +243,7 @@ const CensusEntryPage = () => {
     const res = await fetch(ITEMS_API, { headers: getAuthHeaders() });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Failed to fetch items");
+
     return (data.items || []).map((item) => ({
       id: item.id,
       name: item.nameEn,
@@ -197,44 +260,35 @@ const CensusEntryPage = () => {
 
     if (data.staffMeals) {
       setStaffMeals({
-        breakfast: data.staffMeals.breakfast || 0,
-        lunch: data.staffMeals.lunch || 0,
-        dinner: data.staffMeals.dinner || 0,
+        breakfast: String(data.staffMeals.breakfast ?? ""),
+        lunch: String(data.staffMeals.lunch ?? ""),
+        dinner: String(data.staffMeals.dinner ?? ""),
       });
       setStaffSubmitted(data.staffMeals.status === "submitted");
     } else {
-      setStaffMeals({ breakfast: 0, lunch: 0, dinner: 0 });
+      setStaffMeals({ breakfast: "", lunch: "", dinner: "" });
       setStaffSubmitted(false);
     }
   };
-
-  const initExtrasObject = (itemsList) =>
-    Object.fromEntries(itemsList.map((i) => [i.name, 0]));
 
   useEffect(() => {
     const loadInitial = async () => {
       try {
         setLoading(true);
 
-        const [wardsData, statusesData, itemsData] = await Promise.all([
+        const [wardsData, statusesData, itemsData, dietTypesData] = await Promise.all([
           fetchWards(),
           fetchStatuses(),
           fetchExtraItems(),
+          fetchDietTypes(),
         ]);
 
         setWards(wardsData);
         setExtraItemsMaster(itemsData);
+        setDietTypes(dietTypesData);
         setExtras(initExtrasObject(itemsData));
-        setWardStatuses(
-          wardsData.map((w) => {
-            const sub = statusesData.find((s) => String(s.wardId) === String(w.id));
-            return {
-              ward: w,
-              status: sub?.status || "not_started",
-              totalPatients: sub?.totalPatients || 0,
-            };
-          })
-        );
+        setDiets(buildEmptyDiets(dietTypesData));
+        setWardStatuses(normalizeWardStatuses(statusesData, wardsData));
 
         await fetchStaffMeals();
       } catch (error) {
@@ -249,7 +303,7 @@ const CensusEntryPage = () => {
     };
 
     loadInitial();
-  }, []);
+  }, [buildEmptyDiets, initExtrasObject, normalizeWardStatuses, toast]);
 
   const loadWardData = useCallback(
     async (id) => {
@@ -267,27 +321,42 @@ const CensusEntryPage = () => {
         }
 
         if (data.census) {
+          const normalizedDiets = Object.fromEntries(
+            Object.entries(data.census.diets || {}).map(([k, v]) => [
+              String(k),
+              String(v ?? ""),
+            ])
+          );
+
           setDiets({
-            ...Object.fromEntries(DIET_FIELDS.map((f) => [f.key, 0])),
-            ...(data.census.diets || {}),
+            ...buildEmptyDiets(dietTypes),
+            ...normalizedDiets,
           });
 
           setSpecial({
-            soup: data.census.special?.soup || 0,
-            kanda: data.census.special?.kanda || 0,
-            polSambola: data.census.special?.polSambola || 0,
+            soup: String(data.census.special?.soup ?? ""),
+            kanda: String(data.census.special?.kanda ?? ""),
+            polSambola: String(data.census.special?.polSambola ?? ""),
           });
 
           setExtras({
             ...initExtrasObject(extraItemsMaster),
-            ...(data.census.extras || {}),
+            ...Object.fromEntries(
+              Object.entries(data.census.extras || {}).map(([k, v]) => [k, String(v ?? "")])
+            ),
           });
 
-          setCustomExtras(data.census.customExtras || []);
+          setCustomExtras(
+            (data.census.customExtras || []).map((item) => ({
+              ...item,
+              quantity: String(item.quantity ?? ""),
+            }))
+          );
+
           setStatus(data.census.status || "not_started");
         } else {
-          setDiets(Object.fromEntries(DIET_FIELDS.map((f) => [f.key, 0])));
-          setSpecial({ soup: 0, kanda: 0, polSambola: 0 });
+          setDiets(buildEmptyDiets(dietTypes));
+          setSpecial({ soup: "", kanda: "", polSambola: "" });
           setExtras(initExtrasObject(extraItemsMaster));
           setCustomExtras([]);
           setStatus("not_started");
@@ -300,7 +369,7 @@ const CensusEntryPage = () => {
         });
       }
     },
-    [extraItemsMaster, toast]
+    [buildEmptyDiets, dietTypes, extraItemsMaster, initExtrasObject, toast]
   );
 
   const saveDraft = async () => {
@@ -312,10 +381,10 @@ const CensusEntryPage = () => {
       const payload = {
         wardId,
         date: today,
-        diets,
-        special,
-        extras,
-        customExtras,
+        diets: toNumberObject(diets),
+        special: toNumberObject(special),
+        extras: toNumberObject(extras),
+        customExtras: toCustomExtrasPayload(customExtras),
       };
 
       const res = await fetch(`${API_BASE}/draft`, {
@@ -357,10 +426,10 @@ const CensusEntryPage = () => {
       const payload = {
         wardId,
         date: today,
-        diets,
-        special,
-        extras,
-        customExtras,
+        diets: toNumberObject(diets),
+        special: toNumberObject(special),
+        extras: toNumberObject(extras),
+        customExtras: toCustomExtrasPayload(customExtras),
       };
 
       const res = await fetch(`${API_BASE}/submit`, {
@@ -406,8 +475,13 @@ const CensusEntryPage = () => {
 
   const handleAddCustomItem = () => {
     if (!newItem.name.trim()) return;
-    setCustomExtras((prev) => [...prev, { ...newItem, name: newItem.name.trim() }]);
-    setNewItem({ name: "", quantity: 0, unit: "Pcs" });
+
+    setCustomExtras((prev) => [
+      ...prev,
+      { ...newItem, name: newItem.name.trim() },
+    ]);
+
+    setNewItem({ name: "", quantity: "", unit: "Pcs" });
     setAddItemOpen(false);
   };
 
@@ -418,9 +492,9 @@ const CensusEntryPage = () => {
         headers: getAuthHeaders(),
         body: JSON.stringify({
           date: today,
-          breakfast: staffMeals.breakfast,
-          lunch: staffMeals.lunch,
-          dinner: staffMeals.dinner,
+          breakfast: parseInt(staffMeals.breakfast, 10) || 0,
+          lunch: parseInt(staffMeals.lunch, 10) || 0,
+          dinner: parseInt(staffMeals.dinner, 10) || 0,
           staffCycle: "Chicken",
         }),
       });
@@ -429,6 +503,7 @@ const CensusEntryPage = () => {
       if (!res.ok) throw new Error(data.message || "Failed to submit staff meals");
 
       setStaffSubmitted(true);
+
       toast({
         title: "Staff meals submitted",
         description: "Staff meal counts saved for today.",
@@ -511,6 +586,7 @@ const CensusEntryPage = () => {
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
+
                     <PopoverContent className="w-full p-0" align="start">
                       <Command>
                         <CommandInput placeholder="Search by ward name…" />
@@ -534,11 +610,6 @@ const CensusEntryPage = () => {
                                 <span className="ml-2 text-muted-foreground text-sm">
                                   ({w.code})
                                 </span>
-                                <span className="ml-auto text-xs text-muted-foreground">
-                                  {capacity > 0 && String(wardId) === String(w.id)
-                                    ? `${capacity} beds`
-                                    : ""}
-                                </span>
                               </CommandItem>
                             ))}
                           </CommandGroup>
@@ -557,6 +628,7 @@ const CensusEntryPage = () => {
                       day: "numeric",
                     })}
                   </Badge>
+
                   {ward && (
                     <Badge className={statusConfig[status].className + " h-8 text-xs"}>
                       {statusConfig[status].label}
@@ -566,9 +638,7 @@ const CensusEntryPage = () => {
               </div>
 
               {ward && (
-                <p className="text-label text-muted-foreground">
-                  Capacity: {capacity}
-                </p>
+                <p className="text-label text-muted-foreground">Capacity: {capacity}</p>
               )}
             </CardContent>
           </Card>
@@ -587,6 +657,7 @@ const CensusEntryPage = () => {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-heading-sm">Patient Counts</CardTitle>
                 </CardHeader>
+
                 <CardContent className="space-y-4">
                   {overCapacity && (
                     <div className="flex items-center gap-2 rounded-lg bg-error-bg border border-destructive/30 px-4 py-3 text-destructive text-sm font-medium">
@@ -596,24 +667,33 @@ const CensusEntryPage = () => {
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-                    {DIET_FIELDS.map((field) => {
+                    {dietTypes.map((diet) => {
                       const idx = refIdx++;
+                      const dietKey = getDietKey(diet);
+
                       return (
-                        <div key={field.key} className="flex items-center justify-between gap-3">
+                        <div key={dietKey} className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-1.5">
-                            <Label className="text-label font-semibold">{field.label}</Label>
-                            {field.tooltip && (
+                            <Label className="text-label font-semibold">{diet.nameEn}</Label>
+                            {diet.tooltip && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                                 </TooltipTrigger>
-                                <TooltipContent side="top">{field.tooltip}</TooltipContent>
+                                <TooltipContent side="top">{diet.tooltip}</TooltipContent>
                               </Tooltip>
                             )}
                           </div>
+
                           <NumField
-                            value={diets[field.key] || 0}
-                            onChange={(v) => !isReadOnly && setDiets((d) => ({ ...d, [field.key]: v }))}
+                            value={diets[dietKey] ?? ""}
+                            onChange={(v) => {
+                              if (isReadOnly) return;
+                              setDiets((prev) => ({
+                                ...prev,
+                                [dietKey]: v,
+                              }));
+                            }}
                             onEnter={() => focusNext(idx)}
                             inputRef={registerRef(idx)}
                           />
@@ -633,6 +713,7 @@ const CensusEntryPage = () => {
                         {totalPatients} / {capacity}
                       </span>
                     </div>
+
                     <div className="relative h-3 bg-muted rounded-full overflow-hidden">
                       <div
                         className={`absolute inset-y-0 left-0 rounded-full transition-all duration-300 ${progressColor}`}
@@ -647,6 +728,7 @@ const CensusEntryPage = () => {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-heading-sm">Special Requests</CardTitle>
                 </CardHeader>
+
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4">
                     {[
@@ -659,8 +741,14 @@ const CensusEntryPage = () => {
                         <div key={item.key} className="space-y-1.5">
                           <Label className="text-label font-semibold">{item.label}</Label>
                           <NumField
-                            value={special[item.key] || 0}
-                            onChange={(v) => !isReadOnly && setSpecial((s) => ({ ...s, [item.key]: v }))}
+                            value={special[item.key] ?? ""}
+                            onChange={(v) =>
+                              !isReadOnly &&
+                              setSpecial((s) => ({
+                                ...s,
+                                [item.key]: v,
+                              }))
+                            }
                             onEnter={() => focusNext(idx)}
                             inputRef={registerRef(idx)}
                           />
@@ -685,6 +773,7 @@ const CensusEntryPage = () => {
                       </div>
                     </CardHeader>
                   </CollapsibleTrigger>
+
                   <CollapsibleContent>
                     <CardContent className="pt-0">
                       <div className="border rounded-lg overflow-hidden">
@@ -703,9 +792,13 @@ const CensusEntryPage = () => {
                             >
                               <span className="text-body">{item.name}</span>
                               <NumField
-                                value={extras[item.name] || 0}
+                                value={extras[item.name] ?? ""}
                                 onChange={(v) =>
-                                  !isReadOnly && setExtras((e) => ({ ...e, [item.name]: v }))
+                                  !isReadOnly &&
+                                  setExtras((e) => ({
+                                    ...e,
+                                    [item.name]: v,
+                                  }))
                                 }
                                 onEnter={() => focusNext(idx)}
                                 inputRef={registerRef(idx)}
@@ -725,11 +818,13 @@ const CensusEntryPage = () => {
                           >
                             <span className="text-body">{item.name}</span>
                             <NumField
-                              value={item.quantity}
+                              value={item.quantity ?? ""}
                               onChange={(v) =>
                                 !isReadOnly &&
                                 setCustomExtras((prev) =>
-                                  prev.map((ce, j) => (j === i ? { ...ce, quantity: v } : ce))
+                                  prev.map((ce, j) =>
+                                    j === i ? { ...ce, quantity: v } : ce
+                                  )
                                 )
                               }
                               className="w-full"
@@ -797,25 +892,24 @@ const CensusEntryPage = () => {
                 Enter total staff meal counts (not per-ward).
               </p>
             </CardHeader>
+
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {["breakfast", "lunch", "dinner"].map((meal) => (
                   <div key={meal} className="space-y-2 text-center">
-                    <Label className="text-label font-semibold capitalize text-lg">{meal}</Label>
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      value={staffMeals[meal] || ""}
-                      onChange={(e) =>
+                    <Label className="text-label font-semibold capitalize text-lg">
+                      {meal}
+                    </Label>
+                    <NumField
+                      value={staffMeals[meal] ?? ""}
+                      onChange={(v) =>
                         !staffSubmitted &&
                         setStaffMeals((s) => ({
                           ...s,
-                          [meal]: parseInt(e.target.value, 10) || 0,
+                          [meal]: v,
                         }))
                       }
-                      className="h-14 text-2xl text-center touch-target font-bold"
-                      disabled={staffSubmitted}
+                      className="h-14 text-2xl text-center touch-target font-bold w-full"
                     />
                   </div>
                 ))}
@@ -835,7 +929,12 @@ const CensusEntryPage = () => {
                 <Button
                   className="h-12 px-8 touch-target text-body font-semibold"
                   onClick={handleSubmitStaff}
-                  disabled={staffMeals.breakfast + staffMeals.lunch + staffMeals.dinner === 0}
+                  disabled={
+                    (parseInt(staffMeals.breakfast, 10) || 0) +
+                      (parseInt(staffMeals.lunch, 10) || 0) +
+                      (parseInt(staffMeals.dinner, 10) || 0) ===
+                    0
+                  }
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Submit Staff Meals
@@ -854,8 +953,13 @@ const CensusEntryPage = () => {
               Once submitted, {ward?.name}'s data will be locked for today. Continue?
             </DialogDescription>
           </DialogHeader>
+
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setConfirmOpen(false)} className="touch-target">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              className="touch-target"
+            >
               Cancel
             </Button>
             <Button onClick={handleSubmit} className="touch-target">
@@ -870,6 +974,7 @@ const CensusEntryPage = () => {
           <DialogHeader>
             <DialogTitle>Add Custom Extra Item</DialogTitle>
           </DialogHeader>
+
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-label font-semibold">Item Name</Label>
@@ -880,23 +985,17 @@ const CensusEntryPage = () => {
                 placeholder="Enter item name"
               />
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-label font-semibold">Quantity</Label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={newItem.quantity || ""}
-                  onChange={(e) =>
-                    setNewItem((n) => ({
-                      ...n,
-                      quantity: parseInt(e.target.value, 10) || 0,
-                    }))
-                  }
-                  className="h-11 text-input"
+                <NumField
+                  value={newItem.quantity ?? ""}
+                  onChange={(v) => setNewItem((n) => ({ ...n, quantity: v }))}
+                  className="w-full"
                 />
               </div>
+
               <div className="space-y-1.5">
                 <Label className="text-label font-semibold">Unit</Label>
                 <Popover>
@@ -923,11 +1022,20 @@ const CensusEntryPage = () => {
               </div>
             </div>
           </div>
+
           <DialogFooter className="gap-2 mt-2">
-            <Button variant="outline" onClick={() => setAddItemOpen(false)} className="touch-target">
+            <Button
+              variant="outline"
+              onClick={() => setAddItemOpen(false)}
+              className="touch-target"
+            >
               Cancel
             </Button>
-            <Button onClick={handleAddCustomItem} disabled={!newItem.name.trim()} className="touch-target">
+            <Button
+              onClick={handleAddCustomItem}
+              disabled={!newItem.name.trim()}
+              className="touch-target"
+            >
               Add Item
             </Button>
           </DialogFooter>
