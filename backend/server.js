@@ -11,6 +11,8 @@ const wardsRoutes = require("./routes/wardsRoutes");
 const { auditRequestMiddleware } = require("./middleware/auditRequestMiddleware");
 const dietPlansRoutes = require("./routes/dietPlansRoutes");
 const censusRoutes = require("./routes/censusRoutes");
+
+const recipesRoutes = require("./routes/recipesRoutes");
 const dietCycleRoutes = require("./routes/dietCycleRoutes");
 const dietTypeRoutes = require("./routes/dietTypeRoutes");
 
@@ -42,6 +44,9 @@ app.use("/api/census", censusRoutes);
 app.use("/api/diet-cycles", dietCycleRoutes);
 app.use("/api/items", itemsRoutes);
 app.use("/api/diet-types", dietTypeRoutes);
+
+
+app.use("/api/recipes", recipesRoutes);
 
 // quick health check
 app.get("/health", (req, res) => res.json({ ok: true }));
