@@ -1,46 +1,25 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { MOCK_USERS } from "@/lib/constants";
+import React, { createContext, useContext, useMemo, useState } from "react";
 
-const AuthContext = createContext(undefined);
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem("mealflow_user");
-    return stored ? JSON.parse(stored) : null;
-  });
+  // demo user: change role to test
+  const [user, setUser] = useState({ role: "HospitalAdmin" });
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem("mealflow_user", JSON.stringify(user));
-    } else {
-      localStorage.removeItem("mealflow_user");
-    }
-  }, [user]);
-
-  const login = useCallback((role) => {
-    const mockUser = MOCK_USERS.find((u) => u.role === role);
-    if (mockUser) setUser(mockUser);
-  }, []);
-
-  const logout = useCallback(() => {
-    setUser(null);
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      loginAs: (role) => setUser({ role }),
+      logout: () => setUser(null),
+    }),
+    [user]
   );
-};
 
-const defaultAuthContext = {
-  user: null,
-  login: () => {},
-  logout: () => {},
-  isAuthenticated: false,
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  return context ?? defaultAuthContext;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 };
