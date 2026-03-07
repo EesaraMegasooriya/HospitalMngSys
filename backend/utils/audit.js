@@ -1,91 +1,71 @@
-const pool = require("../config/db");
+const auditModel = require("../models/auditModel");
 
-function safeJson(obj) {
-  if (obj === undefined) return null;
-  try {
-    return JSON.stringify(obj);
-  } catch {
-    return JSON.stringify({ note: "UNSERIALIZABLE_DETAILS" });
-  }
-}
-
-function getIp(req) {
-  return (
-    req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ||
-    req.ip ||
-    null
-  );
-}
-
-async function writeAudit({
-  req,
-  module = "SYSTEM",
+const writeAudit = async ({
+  req = null,
   action,
-  entity = null,
+  entity,
   entity_id = null,
+  old_value = null,
+  new_value = null,
   details = null,
-
-  // optional overrides:
-  actor_user_id = null,
-  actor_email = null,
-  actor_role = null,
-  success = true,
+  severity = "info",
   status_code = null,
-  duration_ms = null,
-}) {
+  success = true,
+
+  // optional manual actor override
+  actor_user_id = null,
+  actor_user_name = null,
+  actor_user_role = null,
+}) => {
   try {
-    const ip = getIp(req);
-    const user_agent = req.headers["user-agent"] || null;
+    let user_id = actor_user_id || null;
+    let user_name = actor_user_name || "System";
+    let user_role = actor_user_role || null;
 
-    // If authMiddleware sets req.user, use it automatically
-    const actor = req.user || null;
+    // fallback to authenticated request user
+    if (!actor_user_name && req?.user) {
+      user_id = req.user.id || null;
+      user_name =
+        req.user.name ||
+        req.user.full_name ||
+        req.user.email ||
+        "Authenticated User";
 
-    const final_actor_user_id = actor_user_id ?? actor?.id ?? actor?.user_id ?? null;
-    const final_actor_email = actor_email ?? actor?.email ?? null;
-    const final_actor_role = actor_role ?? actor?.role ?? null;
+      user_role = req.user.role || null;
+    }
 
-    // request metadata
-    const method = req.method || null;
-    const path = req.originalUrl || req.url || null;
+    const mergedDetails = {
+      ...(details && typeof details === "object" ? details : { message: details }),
+      request_id: req?.request_id || null,
+      method: req?.method || null,
+      path: req?.originalUrl || null,
+      duration_ms: req?._duration_ms || null,
+      role: user_role,
+    };
 
-    // request id / correlation id (optional but recommended)
-    const request_id = req.request_id || req.headers["x-request-id"] || null;
-    const correlation_id = req.headers["x-correlation-id"] || null;
-
-    await pool.query(
-      `INSERT INTO audit_logs
-        (module, actor_user_id, actor_email, actor_role,
-         action, entity, entity_id,
-         ip, user_agent,
-         method, path,
-         request_id, correlation_id,
-         status_code, duration_ms,
-         success, details)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
-      [
-        module,
-        final_actor_user_id,
-        final_actor_email,
-        final_actor_role,
-        action,
-        entity,
-        entity_id ? String(entity_id) : null,
-        ip,
-        user_agent,
-        method,
-        path,
-        request_id,
-        correlation_id,
-        status_code,
-        duration_ms,
-        success,
-        safeJson(details),
-      ]
-    );
+    return await auditModel.createAuditLog({
+      user_id,
+      user_name,
+      user_role, // very important
+      action,
+      entity,
+      entity_id,
+      old_value:
+        old_value && typeof old_value === "object"
+          ? JSON.stringify(old_value)
+          : old_value,
+      new_value:
+        new_value && typeof new_value === "object"
+          ? JSON.stringify(new_value)
+          : new_value,
+      details: JSON.stringify(mergedDetails),
+      severity,
+      status_code: status_code || req?._status_code || null,
+      success,
+    });
   } catch (err) {
-    // IMPORTANT: never crash the API because audit failed
     console.error("[AUDIT_WRITE_FAILED]", err.message);
   }
-}
+};
 
 module.exports = { writeAudit };

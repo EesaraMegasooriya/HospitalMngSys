@@ -1,13 +1,36 @@
 const bcrypt = require("bcrypt");
 const userModel = require("../models/userModel");
+const { writeAudit } = require("../utils/audit");
 
 // GET /api/users
 exports.getUsers = async (req, res) => {
   try {
     const users = await userModel.getAllUsers();
+
+    await writeAudit({
+      req,
+      action: "GET_USERS",
+      entity: "users",
+      details: { count: users.length },
+      severity: "info",
+      status_code: 200,
+      success: true,
+    });
+
     res.status(200).json({ users });
   } catch (error) {
     console.error("GET USERS ERROR:", error);
+
+    await writeAudit({
+      req,
+      action: "GET_USERS",
+      entity: "users",
+      details: { error: error.message },
+      severity: "security",
+      status_code: 500,
+      success: false,
+    });
+
     res.status(500).json({ message: "Failed to fetch users" });
   }
 };
@@ -15,19 +38,21 @@ exports.getUsers = async (req, res) => {
 // POST /api/users
 exports.createUser = async (req, res) => {
   try {
-    const {
-      name,
-      username,
-      email,
-      role,
-      status = "active",
-      twoFA = false,
-      password = "Temp@123",
-    } = req.body;
+    const { name, email, role, password = "Temp@123" } = req.body;
 
-    if (!name || !username || !email || !role) {
+    if (!name || !email || !role) {
+      await writeAudit({
+        req,
+        action: "CREATE_USER",
+        entity: "users",
+        details: { error: "name, email and role are required" },
+        severity: "security",
+        status_code: 400,
+        success: false,
+      });
+
       return res.status(400).json({
-        message: "name, username, email and role are required",
+        message: "name, email and role are required",
       });
     }
 
@@ -35,12 +60,21 @@ exports.createUser = async (req, res) => {
 
     const newUser = await userModel.createUser({
       name,
-      username,
       email,
       role,
-      status,
-      twoFA,
       passwordHash,
+    });
+
+    await writeAudit({
+      req,
+      action: "CREATE_USER",
+      entity: "users",
+      entity_id: String(newUser.id),
+      new_value: newUser,
+      details: { message: "User created successfully" },
+      severity: "info",
+      status_code: 201,
+      success: true,
     });
 
     res.status(201).json({
@@ -50,9 +84,19 @@ exports.createUser = async (req, res) => {
   } catch (error) {
     console.error("CREATE USER ERROR:", error);
 
+    await writeAudit({
+      req,
+      action: "CREATE_USER",
+      entity: "users",
+      details: { error: error.message, email: req.body?.email || null },
+      severity: "security",
+      status_code: error.code === "23505" ? 409 : 500,
+      success: false,
+    });
+
     if (error.code === "23505") {
       return res.status(409).json({
-        message: "Username or email already exists",
+        message: "Email already exists",
       });
     }
 
@@ -64,25 +108,60 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, username, email, role, twoFA = false } = req.body;
+    const { name, email, role } = req.body;
 
-    if (!name || !username || !email || !role) {
-      return res.status(400).json({
-        message: "name, username, email and role are required",
+    if (!name || !email || !role) {
+      await writeAudit({
+        req,
+        action: "UPDATE_USER",
+        entity: "users",
+        entity_id: String(id),
+        details: { error: "name, email and role are required" },
+        severity: "security",
+        status_code: 400,
+        success: false,
       });
+
+      return res.status(400).json({
+        message: "name, email and role are required",
+      });
+    }
+
+    const oldUser = await userModel.getUserById(id);
+
+    if (!oldUser) {
+      await writeAudit({
+        req,
+        action: "UPDATE_USER",
+        entity: "users",
+        entity_id: String(id),
+        details: { error: "User not found" },
+        severity: "security",
+        status_code: 404,
+        success: false,
+      });
+
+      return res.status(404).json({ message: "User not found" });
     }
 
     const updatedUser = await userModel.updateUser(id, {
       name,
-      username,
       email,
       role,
-      twoFA,
     });
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    await writeAudit({
+      req,
+      action: "UPDATE_USER",
+      entity: "users",
+      entity_id: String(id),
+      old_value: oldUser,
+      new_value: updatedUser,
+      details: { message: "User updated successfully" },
+      severity: "info",
+      status_code: 200,
+      success: true,
+    });
 
     res.status(200).json({
       message: "User updated successfully",
@@ -91,9 +170,20 @@ exports.updateUser = async (req, res) => {
   } catch (error) {
     console.error("UPDATE USER ERROR:", error);
 
+    await writeAudit({
+      req,
+      action: "UPDATE_USER",
+      entity: "users",
+      entity_id: String(req.params?.id),
+      details: { error: error.message },
+      severity: "security",
+      status_code: error.code === "23505" ? 409 : 500,
+      success: false,
+    });
+
     if (error.code === "23505") {
       return res.status(409).json({
-        message: "Username or email already exists",
+        message: "Email already exists",
       });
     }
 
@@ -107,17 +197,55 @@ exports.toggleUserStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!["active", "deactivated", "locked"].includes(status)) {
+    if (!["active", "deactivated"].includes(status)) {
+      await writeAudit({
+        req,
+        action: "CHANGE_USER_STATUS",
+        entity: "users",
+        entity_id: String(id),
+        details: { error: "Invalid status value", received: status },
+        severity: "security",
+        status_code: 400,
+        success: false,
+      });
+
       return res.status(400).json({
         message: "Invalid status value",
       });
     }
 
-    const updatedUser = await userModel.updateUserStatus(id, status);
+    const oldUser = await userModel.getUserById(id);
 
-    if (!updatedUser) {
+    if (!oldUser) {
+      await writeAudit({
+        req,
+        action: "CHANGE_USER_STATUS",
+        entity: "users",
+        entity_id: String(id),
+        details: { error: "User not found" },
+        severity: "security",
+        status_code: 404,
+        success: false,
+      });
+
       return res.status(404).json({ message: "User not found" });
     }
+
+    const isActive = status === "active";
+    const updatedUser = await userModel.updateUserStatus(id, isActive);
+
+    await writeAudit({
+      req,
+      action: "CHANGE_USER_STATUS",
+      entity: "users",
+      entity_id: String(id),
+      old_value: { status: oldUser.status },
+      new_value: { status: updatedUser.status },
+      details: { message: "User status updated successfully" },
+      severity: "security",
+      status_code: 200,
+      success: true,
+    });
 
     res.status(200).json({
       message: "User status updated successfully",
@@ -125,6 +253,18 @@ exports.toggleUserStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("TOGGLE USER STATUS ERROR:", error);
+
+    await writeAudit({
+      req,
+      action: "CHANGE_USER_STATUS",
+      entity: "users",
+      entity_id: String(req.params?.id),
+      details: { error: error.message },
+      severity: "security",
+      status_code: 500,
+      success: false,
+    });
+
     res.status(500).json({ message: "Failed to update user status" });
   }
 };
@@ -133,14 +273,42 @@ exports.toggleUserStatus = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { id } = req.params;
+
+    const oldUser = await userModel.getUserById(id);
+
+    if (!oldUser) {
+      await writeAudit({
+        req,
+        action: "RESET_PASSWORD",
+        entity: "users",
+        entity_id: String(id),
+        details: { error: "User not found" },
+        severity: "security",
+        status_code: 404,
+        success: false,
+      });
+
+      return res.status(404).json({ message: "User not found" });
+    }
+
     const newPassword = "Temp@123";
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
     const updatedUser = await userModel.resetUserPassword(id, passwordHash);
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    await writeAudit({
+      req,
+      action: "RESET_PASSWORD",
+      entity: "users",
+      entity_id: String(id),
+      details: {
+        message: "Password reset successfully",
+        reset_for: oldUser.email,
+      },
+      severity: "security",
+      status_code: 200,
+      success: true,
+    });
 
     res.status(200).json({
       message: `Password reset successfully. Temporary password: ${newPassword}`,
@@ -148,6 +316,18 @@ exports.resetPassword = async (req, res) => {
     });
   } catch (error) {
     console.error("RESET PASSWORD ERROR:", error);
+
+    await writeAudit({
+      req,
+      action: "RESET_PASSWORD",
+      entity: "users",
+      entity_id: String(req.params?.id),
+      details: { error: error.message },
+      severity: "security",
+      status_code: 500,
+      success: false,
+    });
+
     res.status(500).json({ message: "Failed to reset password" });
   }
 };

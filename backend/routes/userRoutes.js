@@ -1,20 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/userController");
+const { requireAuth } = require("../middleware/authMiddleware");
 
-// GET all users
-router.get("/", userController.getUsers);
-
-// CREATE new user
-router.post("/", userController.createUser);
-
-// UPDATE user
-router.put("/:id", userController.updateUser);
-
-// ACTIVATE / DEACTIVATE / LOCK
-router.patch("/:id/status", userController.toggleUserStatus);
-
-// RESET password
-router.patch("/:id/reset-password", userController.resetPassword);
+router.get("/", requireAuth, userController.getUsers);
+router.post("/", requireAuth, userController.createUser);
+router.put("/:id", requireAuth, userController.updateUser);
+router.patch("/:id/status", requireAuth, userController.toggleUserStatus);
+router.patch("/:id/reset-password", requireAuth, userController.resetPassword);
 
 module.exports = router;

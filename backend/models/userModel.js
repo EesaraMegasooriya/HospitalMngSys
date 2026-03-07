@@ -1,126 +1,139 @@
 const pool = require("../config/db");
 
-// Get all users
+const mapUserRow = (row) => ({
+  id: row.id,
+  name: row.full_name,
+  username: row.email,
+  email: row.email,
+  role: row.role,
+  status: row.is_active ? "active" : "deactivated",
+  lastLogin: "Never",
+  twoFA: false,
+  password_hash: row.password_hash,
+  created_at: row.created_at,
+  updated_at: row.updated_at,
+});
+
 const getAllUsers = async () => {
   const query = `
     SELECT 
       id,
-      full_name AS name,
-      username,
+      full_name,
       email,
       role,
-      status,
-      COALESCE(last_login::text, 'Never') AS "lastLogin",
-      two_fa_enabled AS "twoFA",
-      created_at
+      is_active,
+      created_at,
+      updated_at
     FROM users
     ORDER BY created_at DESC
   `;
   const result = await pool.query(query);
-  return result.rows;
+  return result.rows.map(mapUserRow);
 };
 
-// Get user by id
 const getUserById = async (id) => {
   const query = `
     SELECT 
       id,
-      full_name AS name,
-      username,
+      full_name,
       email,
       role,
-      status,
-      COALESCE(last_login::text, 'Never') AS "lastLogin",
-      two_fa_enabled AS "twoFA",
-      created_at
+      is_active,
+      created_at,
+      updated_at
     FROM users
     WHERE id = $1
   `;
   const result = await pool.query(query, [id]);
-  return result.rows[0];
+  return result.rows[0] ? mapUserRow(result.rows[0]) : null;
 };
 
-// Create user
-const createUser = async ({ name, username, email, role, status = "active", twoFA = false, passwordHash }) => {
+const findByEmail = async (email) => {
+  const query = `
+    SELECT
+      id,
+      full_name,
+      email,
+      password_hash,
+      role,
+      is_active,
+      created_at,
+      updated_at
+    FROM users
+    WHERE email = $1
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [email]);
+  return result.rows[0] ? mapUserRow(result.rows[0]) : null;
+};
+
+const createUser = async ({ name, email, role, passwordHash }) => {
   const query = `
     INSERT INTO users (
       full_name,
-      username,
       email,
+      password_hash,
       role,
-      status,
-      two_fa_enabled,
-      password_hash
+      is_active
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING 
+    VALUES ($1, $2, $3, $4, true)
+    RETURNING
       id,
-      full_name AS name,
-      username,
+      full_name,
       email,
       role,
-      status,
-      COALESCE(last_login::text, 'Never') AS "lastLogin",
-      two_fa_enabled AS "twoFA",
-      created_at
+      is_active,
+      created_at,
+      updated_at
   `;
-  const values = [name, username, email, role, status, twoFA, passwordHash];
+  const values = [name, email, passwordHash, role];
   const result = await pool.query(query, values);
-  return result.rows[0];
+  return mapUserRow(result.rows[0]);
 };
 
-// Update user
-const updateUser = async (id, { name, username, email, role, twoFA }) => {
+const updateUser = async (id, { name, email, role }) => {
   const query = `
     UPDATE users
     SET
       full_name = $1,
-      username = $2,
-      email = $3,
-      role = $4,
-      two_fa_enabled = $5,
+      email = $2,
+      role = $3,
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $6
+    WHERE id = $4
     RETURNING
       id,
-      full_name AS name,
-      username,
+      full_name,
       email,
       role,
-      status,
-      COALESCE(last_login::text, 'Never') AS "lastLogin",
-      two_fa_enabled AS "twoFA",
-      created_at
+      is_active,
+      created_at,
+      updated_at
   `;
-  const values = [name, username, email, role, twoFA, id];
+  const values = [name, email, role, id];
   const result = await pool.query(query, values);
-  return result.rows[0];
+  return result.rows[0] ? mapUserRow(result.rows[0]) : null;
 };
 
-// Change status
-const updateUserStatus = async (id, status) => {
+const updateUserStatus = async (id, isActive) => {
   const query = `
     UPDATE users
     SET
-      status = $1,
+      is_active = $1,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = $2
     RETURNING
       id,
-      full_name AS name,
-      username,
+      full_name,
       email,
       role,
-      status,
-      COALESCE(last_login::text, 'Never') AS "lastLogin",
-      two_fa_enabled AS "twoFA",
-      created_at
+      is_active,
+      created_at,
+      updated_at
   `;
-  const result = await pool.query(query, [status, id]);
-  return result.rows[0];
+  const result = await pool.query(query, [isActive, id]);
+  return result.rows[0] ? mapUserRow(result.rows[0]) : null;
 };
 
-// Reset password
 const resetUserPassword = async (id, passwordHash) => {
   const query = `
     UPDATE users
@@ -128,15 +141,16 @@ const resetUserPassword = async (id, passwordHash) => {
       password_hash = $1,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = $2
-    RETURNING id, full_name AS name, email
+    RETURNING id, full_name, email
   `;
   const result = await pool.query(query, [passwordHash, id]);
-  return result.rows[0];
+  return result.rows[0] || null;
 };
 
 module.exports = {
   getAllUsers,
   getUserById,
+  findByEmail,
   createUser,
   updateUser,
   updateUserStatus,
