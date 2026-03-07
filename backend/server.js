@@ -14,6 +14,7 @@ const censusRoutes = require("./routes/censusRoutes");
 
 const recipesRoutes = require("./routes/recipesRoutes");
 const dietCycleRoutes = require("./routes/dietCycleRoutes");
+const dietTypeRoutes = require("./routes/dietTypeRoutes");
 
 const itemsRoutes = require("./routes/itemsRoutes");
 
@@ -41,9 +42,8 @@ app.use("/api/wards", wardsRoutes);
 app.use("/api/diet-plans", dietPlansRoutes);
 app.use("/api/census", censusRoutes);
 app.use("/api/diet-cycles", dietCycleRoutes);
-
 app.use("/api/items", itemsRoutes);
-
+app.use("/api/diet-types", dietTypeRoutes);
 
 
 app.use("/api/recipes", recipesRoutes);
