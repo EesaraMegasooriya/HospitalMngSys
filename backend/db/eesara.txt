@@ -101,3 +101,33 @@ CREATE TABLE recipe_ingredients (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_recipe_item UNIQUE (recipe_id, item_id)
 );
+
+CREATE TABLE census_entries (
+    id SERIAL PRIMARY KEY,
+    ward_id INTEGER NOT NULL,
+    entry_date DATE NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'draft',
+    total_patients INTEGER NOT NULL DEFAULT 0,
+    diets JSONB NOT NULL DEFAULT '{}'::jsonb,
+    special JSONB NOT NULL DEFAULT '{}'::jsonb,
+    extras JSONB NOT NULL DEFAULT '{}'::jsonb,
+    custom_extras JSONB NOT NULL DEFAULT '[]'::jsonb,
+    submitted_by INTEGER NULL,
+    submitted_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_census_ward_date UNIQUE (ward_id, entry_date)
+);
+CREATE TABLE staff_meals (
+    id SERIAL PRIMARY KEY,
+    meal_date DATE NOT NULL UNIQUE,
+    breakfast INTEGER NOT NULL DEFAULT 0,
+    lunch INTEGER NOT NULL DEFAULT 0,
+    dinner INTEGER NOT NULL DEFAULT 0,
+    staff_cycle VARCHAR(100) DEFAULT 'Chicken',
+    status VARCHAR(30) NOT NULL DEFAULT 'submitted',
+    submitted_by INTEGER NULL,
+    submitted_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

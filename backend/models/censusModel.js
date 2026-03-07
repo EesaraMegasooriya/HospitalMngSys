@@ -31,24 +31,30 @@ const mapStaffMealRow = (row) => ({
 });
 
 exports.getWardCensusByDate = async (wardId, entryDate) => {
-  const query = `
+  const result = await pool.query(
+    `
     SELECT *
     FROM census_entries
     WHERE ward_id = $1 AND entry_date = $2
     LIMIT 1
-  `;
-  const result = await pool.query(query, [wardId, entryDate]);
+    `,
+    [wardId, entryDate]
+  );
+
   return result.rows[0] ? mapCensusRow(result.rows[0]) : null;
 };
 
 exports.getAllWardCensusStatusesByDate = async (entryDate) => {
-  const query = `
+  const result = await pool.query(
+    `
     SELECT id, ward_id, entry_date, status, total_patients
     FROM census_entries
     WHERE entry_date = $1
     ORDER BY ward_id
-  `;
-  const result = await pool.query(query, [entryDate]);
+    `,
+    [entryDate]
+  );
+
   return result.rows.map(mapCensusRow);
 };
 
@@ -64,7 +70,8 @@ exports.upsertWardCensus = async ({
   submittedBy = null,
   submittedAt = null,
 }) => {
-  const query = `
+  const result = await pool.query(
+    `
     INSERT INTO census_entries (
       ward_id,
       entry_date,
@@ -78,7 +85,7 @@ exports.upsertWardCensus = async ({
       submitted_at,
       updated_at
     )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,CURRENT_TIMESTAMP)
+    VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8::jsonb,$9,$10,CURRENT_TIMESTAMP)
     ON CONFLICT (ward_id, entry_date)
     DO UPDATE SET
       status = EXCLUDED.status,
@@ -91,33 +98,35 @@ exports.upsertWardCensus = async ({
       submitted_at = EXCLUDED.submitted_at,
       updated_at = CURRENT_TIMESTAMP
     RETURNING *
-  `;
+    `,
+    [
+      wardId,
+      entryDate,
+      status,
+      totalPatients,
+      JSON.stringify(diets),
+      JSON.stringify(special),
+      JSON.stringify(extras),
+      JSON.stringify(customExtras),
+      submittedBy,
+      submittedAt,
+    ]
+  );
 
-  const values = [
-    wardId,
-    entryDate,
-    status,
-    totalPatients,
-    JSON.stringify(diets),
-    JSON.stringify(special),
-    JSON.stringify(extras),
-    JSON.stringify(customExtras),
-    submittedBy,
-    submittedAt,
-  ];
-
-  const result = await pool.query(query, values);
   return mapCensusRow(result.rows[0]);
 };
 
 exports.getStaffMealsByDate = async (mealDate) => {
-  const query = `
+  const result = await pool.query(
+    `
     SELECT *
     FROM staff_meals
     WHERE meal_date = $1
     LIMIT 1
-  `;
-  const result = await pool.query(query, [mealDate]);
+    `,
+    [mealDate]
+  );
+
   return result.rows[0] ? mapStaffMealRow(result.rows[0]) : null;
 };
 
@@ -131,7 +140,8 @@ exports.upsertStaffMeals = async ({
   submittedBy = null,
   submittedAt = null,
 }) => {
-  const query = `
+  const result = await pool.query(
+    `
     INSERT INTO staff_meals (
       meal_date,
       breakfast,
@@ -155,19 +165,9 @@ exports.upsertStaffMeals = async ({
       submitted_at = EXCLUDED.submitted_at,
       updated_at = CURRENT_TIMESTAMP
     RETURNING *
-  `;
+    `,
+    [mealDate, breakfast, lunch, dinner, staffCycle, status, submittedBy, submittedAt]
+  );
 
-  const values = [
-    mealDate,
-    breakfast,
-    lunch,
-    dinner,
-    staffCycle,
-    status,
-    submittedBy,
-    submittedAt,
-  ];
-
-  const result = await pool.query(query, values);
   return mapStaffMealRow(result.rows[0]);
 };
