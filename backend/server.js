@@ -11,6 +11,8 @@ const wardsRoutes = require("./routes/wardsRoutes");
 const { auditRequestMiddleware } = require("./middleware/auditRequestMiddleware");
 const dietPlansRoutes = require("./routes/dietPlansRoutes");
 
+const itemsRoutes = require("./routes/itemsRoutes");
+
 
 const app = express();
 
@@ -34,6 +36,9 @@ app.use("/api/audit", auditRoutes);
 app.use("/api", hospitalAdminRoutes);
 app.use("/api/wards", wardsRoutes);
 app.use("/api/diet-plans", dietPlansRoutes);
+
+app.use("/api/items", itemsRoutes);
+
 
 // quick health check
 app.get("/health", (req, res) => res.json({ ok: true }));
