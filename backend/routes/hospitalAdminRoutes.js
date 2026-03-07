@@ -10,7 +10,7 @@ const frac = require("../controllers/fractionalFormulasController");
 const cats = require("../controllers/categoriesController");
 
 // everything here: HOSPITAL_ADMIN only
-router.use(requireAuth, requireRole("HOSPITAL_ADMIN"));
+// router.use(requireAuth, requireRole("HOSPITAL_ADMIN"));
 
 router.get("/wards", wards.getWards);
 router.post("/wards", wards.createWard);

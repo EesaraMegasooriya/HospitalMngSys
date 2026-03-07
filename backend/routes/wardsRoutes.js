@@ -1,24 +1,11 @@
 const express = require("express");
 const router = express.Router();
+const wardsController = require("../controllers/wardsController");
+const { requireAuth } = require("../middleware/authMiddleware");
 
-const {
-  getWards,
-  getWardById,
-  createWard,
-  updateWard,
-  toggleWardStatus,
-  deleteWard,
-} = require("../controllers/wardsController");
-
-// You can protect these with authMiddleware if needed
-// const { authenticateToken } = require("../middleware/authMiddleware");
-// router.use(authenticateToken);
-
-router.get("/", getWards);
-router.get("/:id", getWardById);
-router.post("/", createWard);
-router.put("/:id", updateWard);
-router.patch("/:id/toggle", toggleWardStatus);
-router.delete("/:id", deleteWard);
+router.get("/", requireAuth, wardsController.getWards);
+router.post("/", requireAuth, wardsController.createWard);
+router.put("/:id", requireAuth, wardsController.updateWard);
+router.patch("/:id/status", requireAuth, wardsController.toggleWardStatus);
 
 module.exports = router;

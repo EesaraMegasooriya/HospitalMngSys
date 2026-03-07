@@ -38,6 +38,9 @@ app.use("/api/diet-plans", dietPlansRoutes);
 app.use("/api/census", censusRoutes);
 app.use("/api/diet-cycles", dietCycleRoutes);
 
+app.use("/api/items", itemsRoutes);
+
+
 // quick health check
 app.get("/health", (req, res) => res.json({ ok: true }));
 
