@@ -49,6 +49,8 @@ import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const Page = ({ children }) => <AppLayout>{children}</AppLayout>;
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -67,9 +69,9 @@ function App() {
               <Route
                 path="/dashboard"
                 element={
-                 
+                  <Page>
                     <Dashboard />
-                  
+                  </Page>
                 }
               />
 
@@ -77,17 +79,17 @@ function App() {
               <Route
                 path="/census"
                 element={
-                  <AppLayout>
+                  <Page>
                     <CensusEntry />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/census/submissions"
                 element={
-                  <AppLayout>
+                  <Page>
                     <CensusSubmissions />
-                  </AppLayout>
+                  </Page>
                 }
               />
 
@@ -95,33 +97,33 @@ function App() {
               <Route
                 path="/calculations"
                 element={
-                  <AppLayout>
+                  <Page>
                     <Calculations />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/calculations/results"
                 element={
-                  <AppLayout>
+                  <Page>
                     <CalculationResults />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/orders"
                 element={
-                  <AppLayout>
+                  <Page>
                     <Orders />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/orders/:id"
                 element={
-                  <AppLayout>
+                  <Page>
                     <OrderDetail />
-                  </AppLayout>
+                  </Page>
                 }
               />
 
@@ -129,49 +131,49 @@ function App() {
               <Route
                 path="/approvals"
                 element={
-                  <AppLayout>
+                  <Page>
                     <Approvals />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/approvals/:id"
                 element={
-                  <AppLayout>
+                  <Page>
                     <ApprovalDetail />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/invoices"
                 element={
-                  <AppLayout>
+                  <Page>
                     <Invoices />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/invoices/:id"
                 element={
-                  <AppLayout>
+                  <Page>
                     <InvoiceDetail />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/accountant/prices"
                 element={
-                  <AppLayout>
+                  <Page>
                     <AccountantPriceManagement />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/reports"
                 element={
-                  <AppLayout>
+                  <Page>
                     <FinancialReports />
-                  </AppLayout>
+                  </Page>
                 }
               />
 
@@ -179,25 +181,25 @@ function App() {
               <Route
                 path="/kitchen"
                 element={
-                  <AppLayout>
+                  <Page>
                     <CookSheet />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/kitchen/receiving"
                 element={
-                  <AppLayout>
+                  <Page>
                     <DeliveryReceiving />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/kitchen/reports"
                 element={
-                  <AppLayout>
+                  <Page>
                     <IssueReports />
-                  </AppLayout>
+                  </Page>
                 }
               />
 
@@ -205,65 +207,65 @@ function App() {
               <Route
                 path="/admin/daily-cycle"
                 element={
-                  <AppLayout>
+                  <Page>
                     <AdminDailyCycle />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/admin/wards"
                 element={
-                  <AppLayout>
+                  <Page>
                     <AdminWards />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/admin/diet-types"
                 element={
-                  <AppLayout>
+                  <Page>
                     <AdminDietTypes />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/admin/items"
                 element={
-                  <AppLayout>
+                  <Page>
                     <AdminItems />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/admin/norm-weights"
                 element={
-                  <AppLayout>
+                  <Page>
                     <NormWeights />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/admin/diet-cycles"
                 element={
-                  <AppLayout>
+                  <Page>
                     <AdminDietCycles />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/admin/recipes"
                 element={
-                  <AppLayout>
+                  <Page>
                     <AdminRecipes />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/admin/notifications"
                 element={
-                  <AppLayout>
+                  <Page>
                     <AdminNotifications />
-                  </AppLayout>
+                  </Page>
                 }
               />
 
@@ -271,43 +273,38 @@ function App() {
               <Route
                 path="/system/users"
                 element={
-                 
+                  <Page>
                     <SystemUsers />
-                  
+                  </Page>
                 }
               />
               <Route
                 path="/system/audit"
                 element={
-                  <AppLayout>
+                  <Page>
                     <AuditLogs />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/system/backups"
                 element={
-                  <AppLayout>
+                  <Page>
                     <Backups />
-                  </AppLayout>
+                  </Page>
                 }
               />
               <Route
                 path="/system/settings"
                 element={
-                  <AppLayout>
+                  <Page>
                     <SystemSettings />
-                  </AppLayout>
+                  </Page>
                 }
               />
 
-              {/* Legacy redirect */}
               <Route path="/prices" element={<Navigate to="/dashboard" replace />} />
-
-              <Route
-                path="*"
-                element={<NotFound />}
-              />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>
