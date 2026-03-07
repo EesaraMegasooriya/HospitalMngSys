@@ -182,8 +182,8 @@ const CensusEntryPage = () => {
     return Object.fromEntries((itemsList || []).map((i) => [i.name, ""]));
   }, []);
 
-  const normalizeWardStatuses = useCallback((statusesFromApi, wardsSource = wards) => {
-    return wardsSource.map((w) => {
+  const normalizeWardStatuses = useCallback((statusesFromApi, wardsSource) => {
+    return (wardsSource || []).map((w) => {
       const sub = statusesFromApi.find((s) => String(s.wardId) === String(w.id));
       return {
         ward: w,
@@ -191,7 +191,7 @@ const CensusEntryPage = () => {
         totalPatients: sub?.totalPatients || 0,
       };
     });
-  }, [wards]);
+  }, []);
 
   const toNumberObject = (obj) =>
     Object.fromEntries(
@@ -400,7 +400,7 @@ const CensusEntryPage = () => {
       setStatus("draft");
 
       const statusesData = await fetchStatuses();
-      setWardStatuses(normalizeWardStatuses(statusesData));
+      setWardStatuses(normalizeWardStatuses(statusesData, wards));
 
       toast({
         title: "Draft Saved",
@@ -445,7 +445,7 @@ const CensusEntryPage = () => {
       setStatus("submitted");
 
       const statusesData = await fetchStatuses();
-      const normalized = normalizeWardStatuses(statusesData);
+      const normalized = normalizeWardStatuses(statusesData, wards);
       setWardStatuses(normalized);
 
       toast({
