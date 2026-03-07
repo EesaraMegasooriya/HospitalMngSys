@@ -1,8 +1,12 @@
-const router = require("express").Router();
-const { getUsers } = require("../controllers/userController");
-const { requireAuth, requireRole } = require("../middleware/authMiddleware");
+const express = require("express");
+const router = express.Router();
+const userController = require("../controllers/userController");
+const { requireAuth } = require("../middleware/authMiddleware");
 
-// Only admins can view users
-router.get("/", requireAuth, requireRole("SYSTEM_ADMIN", "HOSPITAL_ADMIN"), getUsers);
+router.get("/", requireAuth, userController.getUsers);
+router.post("/", requireAuth, userController.createUser);
+router.put("/:id", requireAuth, userController.updateUser);
+router.patch("/:id/status", requireAuth, userController.toggleUserStatus);
+router.patch("/:id/reset-password", requireAuth, userController.resetPassword);
 
 module.exports = router;

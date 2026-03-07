@@ -16,48 +16,51 @@ exports.register = async (req, res) => {
   try {
     const { full_name, email, password, role } = req.body;
 
-    // basic validation
     if (!full_name || !email || !password || !role) {
-      return res.status(400).json({ message: "full_name, email, password, role are required" });
+      return res.status(400).json({
+        message: "full_name, email, password, role are required",
+      });
     }
 
-    // role validation (avoid DB CHECK errors)
     if (!ALLOWED_ROLES.has(role)) {
       return res.status(400).json({ message: "Invalid role" });
     }
 
     const existingUser = await User.findByEmail(email);
+
     if (existingUser) {
-        // ✅ audit: register attempt with existing email
       await writeAudit({
         req,
         action: "REGISTER_FAILED_EMAIL_EXISTS",
         entity: "users",
-        actor_email: email,
-        actor_role: role,
-        details: { full_name },
+        details: { email, full_name, role },
+        severity: "security",
+        status_code: 409,
+        success: false,
       });
+
       return res.status(409).json({ message: "Email already exists" });
     }
 
-    const password_hash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 10);
 
     const newUser = await User.createUser({
-      full_name,
+      name: full_name,
       email,
-      password_hash,
       role,
+      passwordHash,
     });
-    // ✅ audit: register success
+
     await writeAudit({
       req,
       action: "REGISTER_SUCCESS",
       entity: "users",
-      entity_id: newUser.id,
-      actor_user_id: newUser.id,
-      actor_email: newUser.email,
-      actor_role: newUser.role,
-      details: { full_name: newUser.full_name },
+      entity_id: String(newUser.id),
+      new_value: newUser,
+      details: { full_name: newUser.name, email: newUser.email, role: newUser.role },
+      severity: "info",
+      status_code: 201,
+      success: true,
     });
 
     return res.status(201).json({
@@ -69,14 +72,19 @@ exports.register = async (req, res) => {
     console.error("DETAIL:", error.detail);
     console.error("CODE:", error.code);
 
-    // ✅ optional audit: register error
     await writeAudit({
       req,
       action: "REGISTER_ERROR",
       entity: "users",
-      actor_email: req.body?.email || null,
-      actor_role: req.body?.role || null,
-      details: { message: error.message, code: error.code },
+      details: {
+        email: req.body?.email || null,
+        role: req.body?.role || null,
+        message: error.message,
+        code: error.code,
+      },
+      severity: "security",
+      status_code: 500,
+      success: false,
     });
 
     return res.status(500).json({
@@ -93,71 +101,91 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "email and password are required" });
+      return res.status(400).json({
+        message: "email and password are required",
+      });
     }
 
-    // use model instead of pool (pool was undefined in your code)
     const user = await User.findByEmail(email);
 
     if (!user) {
-        // ✅ audit: login failed (no user)
       await writeAudit({
         req,
         action: "LOGIN_FAILED",
         entity: "users",
-        actor_email: email,
-        details: { reason: "user_not_found" },
+        details: { email, reason: "user_not_found" },
+        severity: "security",
+        status_code: 401,
+        success: false,
       });
+
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    if (!user.is_active) {
-        // ✅ audit: login blocked (deactivated)
+    if (user.status !== "active") {
       await writeAudit({
         req,
         action: "LOGIN_BLOCKED",
         entity: "users",
-        entity_id: user.id,
-        actor_user_id: user.id,
-        actor_email: user.email,
-        actor_role: user.role,
-        details: { reason: "deactivated" },
+        entity_id: String(user.id),
+        details: {
+          email: user.email,
+          role: user.role,
+          reason: "deactivated",
+        },
+        severity: "security",
+        status_code: 403,
+        success: false,
       });
+
       return res.status(403).json({ message: "Account is deactivated" });
     }
 
     const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) {
 
-        // ✅ audit: login failed (wrong password)
+    if (!ok) {
       await writeAudit({
         req,
         action: "LOGIN_FAILED",
         entity: "users",
-        entity_id: user.id,
-        actor_user_id: user.id,
-        actor_email: user.email,
-        actor_role: user.role,
-        details: { reason: "wrong_password" },
+        entity_id: String(user.id),
+        details: {
+          email: user.email,
+          role: user.role,
+          reason: "wrong_password",
+        },
+        severity: "security",
+        status_code: 401,
+        success: false,
       });
+
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const token = jwt.sign(
-      { id: user.id, role: user.role, email: user.email },
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
 
-    // ✅ audit: login success
     await writeAudit({
       req,
       action: "LOGIN_SUCCESS",
       entity: "users",
-      entity_id: user.id,
-      actor_user_id: user.id,
-      actor_email: user.email,
-      actor_role: user.role,
+      entity_id: String(user.id),
+      details: {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      severity: "info",
+      status_code: 200,
+      success: true,
     });
 
     return res.json({
@@ -165,7 +193,7 @@ exports.login = async (req, res) => {
       token,
       user: {
         id: user.id,
-        full_name: user.full_name,
+        name: user.name,
         email: user.email,
         role: user.role,
       },
@@ -175,14 +203,20 @@ exports.login = async (req, res) => {
     console.error("DETAIL:", error.detail);
     console.error("CODE:", error.code);
 
-    // ✅ optional audit: login error
     await writeAudit({
       req,
       action: "LOGIN_ERROR",
       entity: "users",
-      actor_email: req.body?.email || null,
-      details: { message: error.message, code: error.code },
+      details: {
+        email: req.body?.email || null,
+        message: error.message,
+        code: error.code,
+      },
+      severity: "security",
+      status_code: 500,
+      success: false,
     });
+
     return res.status(500).json({
       message: "Login failed",
       error: error.message,
@@ -191,4 +225,3 @@ exports.login = async (req, res) => {
     });
   }
 };
-

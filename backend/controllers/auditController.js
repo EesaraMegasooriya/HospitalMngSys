@@ -1,42 +1,22 @@
-// controllers/auditController.js
-const pool = require("../config/db");
+const auditModel = require("../models/auditModel");
 
 exports.getAuditLogs = async (req, res) => {
   try {
-    const q = (req.query.q || "").trim();
-    const limit = Math.min(Number(req.query.limit) || 200, 500);
-
-    const params = [];
-    let where = "WHERE 1=1";
-
-    if (q) {
-      params.push(`%${q}%`);
-      const p = `$${params.length}`;
-      where += ` AND (
-        actor_email ILIKE ${p}
-        OR actor_role ILIKE ${p}
-        OR action ILIKE ${p}
-        OR entity ILIKE ${p}
-        OR COALESCE(details::text,'') ILIKE ${p}
-        OR COALESCE(ip,'') ILIKE ${p}
-      )`;
-    }
-
-    params.push(limit);
-
-    const sql = `
-      SELECT id, created_at, actor_user_id, actor_email, actor_role,
-             action, entity, entity_id, ip, user_agent, details
-      FROM audit_logs
-      ${where}
-      ORDER BY created_at DESC
-      LIMIT $${params.length}
-    `;
-
-    const r = await pool.query(sql, params);
-    res.json({ logs: r.rows });
-  } catch (err) {
-    console.error("GET AUDIT LOGS ERROR:", err);
+    const { action = "all" } = req.query;
+    const logs = await auditModel.getAllAuditLogs(action);
+    res.status(200).json({ logs });
+  } catch (error) {
+    console.error("GET AUDIT LOGS ERROR:", error);
     res.status(500).json({ message: "Failed to fetch audit logs" });
+  }
+};
+
+exports.getAuditActions = async (req, res) => {
+  try {
+    const actions = await auditModel.getAuditActions();
+    res.status(200).json({ actions: actions.map((a) => a.action) });
+  } catch (error) {
+    console.error("GET AUDIT ACTIONS ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch audit actions" });
   }
 };
