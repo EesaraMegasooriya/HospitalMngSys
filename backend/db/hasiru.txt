@@ -11,3 +11,14 @@ CREATE TABLE diet_cycles (
 );
 
 
+DROP TABLE IF EXISTS norm_weights;
+
+CREATE TABLE norm_weights (
+    item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    diet_type_id INTEGER NOT NULL REFERENCES diet_types(id) ON DELETE CASCADE, -- Matched to your SERIAL id!
+    meal VARCHAR(20) NOT NULL,
+    weight DECIMAL(10,2) DEFAULT 0,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (item_id, diet_type_id, meal) 
+);
