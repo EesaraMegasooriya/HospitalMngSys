@@ -205,22 +205,19 @@ const CensusEntryPage = () => {
     }));
 
   const fetchDietTypes = async () => {
-    const res = await fetch(DIET_TYPES_API, {
-      headers: getAuthHeaders(),
-    });
+    const res = await fetch(DIET_TYPES_API, { headers: getAuthHeaders() });
     const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to fetch diet types");
 
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to fetch diet types");
-    }
-
-    return (data.dietTypes || []).map((diet) => ({
-      ...diet,
-      code: diet.code || String(diet.id),
-      nameEn: diet.nameEn || diet.name_en || diet.name || "Unnamed Diet",
-      nameSi: diet.nameSi || diet.name_si || "",
-      tooltip: diet.tooltip || "",
-    }));
+    return (data.dietTypes || [])
+      .filter(diet => diet.active) // <-- Add this filter!
+      .map((diet) => ({
+        ...diet,
+        code: diet.code || String(diet.id),
+        nameEn: diet.nameEn || diet.name_en || diet.name || "Unnamed Diet",
+        nameSi: diet.nameSi || diet.name_si || "",
+        tooltip: diet.tooltip || "",
+      }));
   };
 
   const fetchWards = async () => {
