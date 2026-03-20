@@ -12,6 +12,7 @@ const { auditRequestMiddleware } = require("./middleware/auditRequestMiddleware"
 const dietPlansRoutes = require("./routes/dietPlansRoutes");
 const censusRoutes = require("./routes/censusRoutes");
 const calculationRoutes = require("./routes/calculationRoutes");
+const dailyCycleRoutes = require("./routes/dailyCycleRoutes");
 const normWeightRoutes = require("./routes/normalWeightRoutes");
 const recipesRoutes = require("./routes/recipesRoutes");
 const dietCycleRoutes = require("./routes/dietCycleRoutes");
@@ -45,6 +46,7 @@ app.use("/api/wards", wardsRoutes);
 app.use("/api/diet-plans", dietPlansRoutes);
 app.use("/api/census", censusRoutes);
 app.use("/api/calculations", calculationRoutes);
+app.use("/api/daily-cycle", dailyCycleRoutes);
 app.use("/api/diet-cycles", dietCycleRoutes);
 app.use("/api/norm-weights", normWeightRoutes);
 app.use("/api/items", itemsRoutes);

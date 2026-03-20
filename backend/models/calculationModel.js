@@ -766,7 +766,9 @@ async function getCalculationResults(calcDate) {
   return {
     run: {
       id: run.id,
-      date: run.calc_date,
+      date: run.calc_date instanceof Date
+        ? run.calc_date.toISOString().split("T")[0]
+        : String(run.calc_date).split("T")[0],
       patientCycle: run.patient_cycle,
       staffCycle: run.staff_cycle,
       patientTotals: run.patient_totals,

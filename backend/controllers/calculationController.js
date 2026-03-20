@@ -1,86 +1,48 @@
 const calculationModel = require("../models/calculationModel");
 const { writeAudit } = require("../utils/audit");
+const { getBaseUnit, toDisplayUnit, roundDisplay } = require("../utils/uom");
 
-/**
- * POST /api/calculations/run
- * Triggers the full calculation engine for a given date.
- * Called by Subject Clerk after all wards have submitted.
- */
 exports.runCalculation = async (req, res) => {
   try {
     const { date } = req.body;
-
-    if (!date) {
-      return res.status(400).json({ message: "date is required" });
-    }
+    if (!date) return res.status(400).json({ message: "date is required" });
 
     const result = await calculationModel.runCalculation(date, req.user?.id);
 
     await writeAudit({
-      req,
-      action: "RUN_CALCULATION",
-      entity: "calculation_runs",
+      req, action: "RUN_CALCULATION", entity: "calculation_runs",
       entity_id: String(result.calcRunId),
-      new_value: {
-        date,
-        patientCycle: result.patientCycle,
-        staffCycle: result.staffCycle,
-        totalItems: result.grandTotals.length,
-        totalRecipes: result.recipeResults.length,
-      },
+      new_value: { date, patientCycle: result.patientCycle, staffCycle: result.staffCycle,
+        totalItems: result.grandTotals.length, totalRecipes: result.recipeResults.length },
       details: { message: `Calculation completed for ${date}` },
-      severity: "info",
-      status_code: 200,
-      success: true,
+      severity: "info", status_code: 200, success: true,
     });
 
     res.status(200).json({
       message: "Calculation completed successfully",
-      calcRunId: result.calcRunId,
-      date: result.date,
-      patientCycle: result.patientCycle,
-      staffCycle: result.staffCycle,
+      calcRunId: result.calcRunId, date: result.date,
+      patientCycle: result.patientCycle, staffCycle: result.staffCycle,
       aggregated: result.aggregated,
     });
   } catch (error) {
     console.error("RUN CALCULATION ERROR:", error);
-
     await writeAudit({
-      req,
-      action: "RUN_CALCULATION",
-      entity: "calculation_runs",
+      req, action: "RUN_CALCULATION", entity: "calculation_runs",
       details: { error: error.message, date: req.body?.date },
-      severity: "error",
-      status_code: 500,
-      success: false,
+      severity: "error", status_code: 500, success: false,
     });
-
     res.status(500).json({ message: error.message || "Calculation failed" });
   }
 };
 
-/**
- * GET /api/calculations/results?date=YYYY-MM-DD
- * Fetches saved calculation results for a date.
- * Used by Subject Clerk (results view), Kitchen (cook sheet), Accountant (PO review).
- */
 exports.getResults = async (req, res) => {
   try {
     const { date } = req.query;
-
-    if (!date) {
-      return res.status(400).json({ message: "date is required" });
-    }
+    if (!date) return res.status(400).json({ message: "date is required" });
 
     const results = await calculationModel.getCalculationResults(date);
+    if (!results) return res.status(404).json({ message: "No calculation results found for this date" });
 
-    if (!results) {
-      return res.status(404).json({
-        message: "No calculation results found for this date",
-      });
-    }
-
-    // Group line items by tab category for the frontend
     const grouped = groupResultsForFrontend(results);
 
     res.status(200).json({
@@ -96,61 +58,30 @@ exports.getResults = async (req, res) => {
   }
 };
 
-/**
- * GET /api/calculations/cook-sheet?date=YYYY-MM-DD
- * Fetches calculation results formatted for the Kitchen cook sheet.
- * NO financial data is included.
- */
 exports.getCookSheet = async (req, res) => {
   try {
     const { date } = req.query;
-
-    if (!date) {
-      return res.status(400).json({ message: "date is required" });
-    }
+    if (!date) return res.status(400).json({ message: "date is required" });
 
     const results = await calculationModel.getCalculationResults(date);
+    if (!results) return res.status(404).json({ message: "No calculation results found for this date" });
 
-    if (!results) {
-      return res.status(404).json({
-        message: "No calculation results found for this date",
-      });
-    }
-
-    // Build cook sheet data — NO prices
     const cookSheet = {
       date: results.run.date,
       patientCycle: results.run.patientCycle,
       staffCycle: results.run.staffCycle,
-
-      // Patient totals
       patientTotals: results.run.patientTotals,
-
-      // Staff meal counts
       staff: {
         breakfast: results.run.staffBreakfast,
         lunch: results.run.staffLunch,
         dinner: results.run.staffDinner,
       },
-
-      // Diet instructions (rice/bread per meal)
       dietInstructions: buildDietInstructions(results.lineItems),
-
-      // Protein allocation (children / patients / staff)
       proteinAllocation: buildProteinAllocation(results.lineItems),
-
-      // Recipe results with ingredient quantities
       recipes: results.recipeResults,
-
-      // Kanda calculation
       kanda: results.run.kandaCount > 0
-        ? {
-            count: results.run.kandaCount,
-            redRiceG: results.run.kandaCount * 30,
-          }
+        ? { count: results.run.kandaCount, redRiceG: results.run.kandaCount * 30 }
         : null,
-
-      // Extra items
       extras: results.run.extrasTotals,
       customExtras: results.run.customExtrasTotals,
     };
@@ -162,65 +93,33 @@ exports.getCookSheet = async (req, res) => {
   }
 };
 
-/**
- * GET /api/calculations/breakdown/:itemId?date=YYYY-MM-DD
- * Fetches detailed per-diet-type breakdown for a specific item.
- * Used by Subject Clerk when clicking the 🔍 icon.
- */
 exports.getItemBreakdown = async (req, res) => {
   try {
     const { itemId } = req.params;
     const { date } = req.query;
-
-    if (!date || !itemId) {
-      return res.status(400).json({ message: "date and itemId are required" });
-    }
+    if (!date || !itemId) return res.status(400).json({ message: "date and itemId are required" });
 
     const results = await calculationModel.getCalculationResults(date);
+    if (!results) return res.status(404).json({ message: "No calculation results found" });
 
-    if (!results) {
-      return res.status(404).json({ message: "No calculation results found" });
-    }
+    const itemLines = results.lineItems.filter((li) => li.itemId === Number(itemId));
+    if (itemLines.length === 0) return res.status(404).json({ message: "Item not found in calculation" });
 
-    const itemLines = results.lineItems.filter(
-      (li) => li.itemId === Number(itemId)
-    );
-
-    if (itemLines.length === 0) {
-      return res.status(404).json({ message: "Item not found in calculation" });
-    }
-
-    // Merge breakdowns across meals
     const breakdown = {};
     for (const li of itemLines) {
       for (const [code, data] of Object.entries(li.breakdown)) {
         if (!breakdown[code]) {
-          breakdown[code] = {
-            dietType: data.nameEn || code,
-            code,
-            meals: {},
-            totalG: 0,
-          };
+          breakdown[code] = { dietType: data.nameEn || code, code, meals: {}, totalG: 0 };
         }
-        breakdown[code].meals[li.meal] = {
-          count: data.count,
-          normG: data.normG,
-          subtotalG: data.totalG,
-        };
+        breakdown[code].meals[li.meal] = { count: data.count, normG: data.normG, subtotalG: data.totalG };
         breakdown[code].totalG += data.totalG;
       }
     }
 
     res.status(200).json({
       itemId: Number(itemId),
-      nameEn: itemLines[0].nameEn,
-      nameSi: itemLines[0].nameSi,
-      unit: itemLines[0].unit,
-      meals: itemLines.map((li) => ({
-        meal: li.meal,
-        displayValue: li.displayValue,
-        displayUnit: li.displayUnit,
-      })),
+      nameEn: itemLines[0].nameEn, nameSi: itemLines[0].nameSi, unit: itemLines[0].unit,
+      meals: itemLines.map((li) => ({ meal: li.meal, displayValue: li.displayValue, displayUnit: li.displayUnit })),
       breakdown: Object.values(breakdown),
     });
   } catch (error) {
@@ -234,15 +133,8 @@ exports.getItemBreakdown = async (req, res) => {
 // ──────────────────────────────────────────────────
 
 function groupResultsForFrontend(results) {
-  const tabs = {
-    rice: [],
-    protein: [],
-    vegetables: [],
-    condiments: [],
-    extras: [],
-  };
+  const tabs = { rice: [], protein: [], vegetables: [], condiments: [], extras: [] };
 
-  // Build grand totals per item
   const itemMap = {};
   for (const li of results.lineItems) {
     if (!itemMap[li.itemId]) {
@@ -255,74 +147,61 @@ function groupResultsForFrontend(results) {
         categoryName: li.categoryName,
         isProtein: li.isProtein,
         isVegetable: li.isVegetable,
-        breakfast: null,
-        lunch: null,
-        dinner: null,
-        grandTotal: 0,
-        grandTotalBase: 0,
-        breakdown: [],
+        breakfast: null, lunch: null, dinner: null,
+        grandTotal: 0, grandTotalBase: 0, breakdown: [],
       };
     }
     const item = itemMap[li.itemId];
     item[li.meal] = li.displayValue;
     item.grandTotalBase += li.subtotalBase;
 
-    // Collect breakdown for dialog
     for (const [code, data] of Object.entries(li.breakdown)) {
       item.breakdown.push({
-        meal: li.meal,
-        dietType: data.nameEn || code,
-        code,
-        count: data.count,
-        normG: data.normG,
-        subtotalG: data.totalG,
+        meal: li.meal, dietType: data.nameEn || code, code,
+        count: data.count, normG: data.normG, subtotalG: data.totalG,
       });
     }
   }
 
-  // Calculate grand total in display units
   for (const item of Object.values(itemMap)) {
-    const { base } = require("../utils/uom").getBaseUnit(item.unit);
-    item.grandTotal = require("../utils/uom").roundDisplay(
-      require("../utils/uom").toDisplayUnit(item.grandTotalBase, item.unit),
-      item.unit
-    );
+    item.grandTotal = roundDisplay(toDisplayUnit(item.grandTotalBase, item.unit), item.unit);
   }
 
-  // Categorize into tabs
+  // ──── DEBUG: Remove this block after fixing ────
+  console.log("\n=== TAB GROUPING DEBUG ===");
   for (const item of Object.values(itemMap)) {
-    if (item.isProtein) {
+    console.log(`  "${item.nameEn}" → categoryId=${item.categoryId} (${typeof item.categoryId}) | isProtein=${item.isProtein} (${typeof item.isProtein}) | isVegetable=${item.isVegetable} (${typeof item.isVegetable})`);
+  }
+  console.log("=========================\n");
+  // ──── END DEBUG ────
+
+  // Categorize — using !! for booleans and Number() for categoryId
+  for (const item of Object.values(itemMap)) {
+    const catId = Number(item.categoryId) || 0;
+
+    if (!!item.isProtein) {
       tabs.protein.push(item);
-    } else if (item.isVegetable) {
+    } else if (!!item.isVegetable) {
       tabs.vegetables.push(item);
-    } else if (item.categoryId <= 1) {
-      // Rice/Bread category
+    } else if (catId === 1) {
       tabs.rice.push(item);
-    } else if (item.categoryId === 8) {
-      // Condiments
+    } else if (catId === 8) {
       tabs.condiments.push(item);
     } else {
-      // Everything else goes to extras
       tabs.extras.push(item);
     }
   }
 
-  // Add raw-sum extras from the run
-  // (These are not in line items since they bypass norm-weight calculation)
+  console.log(`Tab counts → rice:${tabs.rice.length} protein:${tabs.protein.length} veg:${tabs.vegetables.length} condiments:${tabs.condiments.length} extras:${tabs.extras.length}`);
+
+  // Add raw-sum extras
   const extrasTotals = results.run.extrasTotals || {};
   for (const [name, qty] of Object.entries(extrasTotals)) {
     if (Number(qty) > 0) {
       tabs.extras.push({
-        id: `extra-${name}`,
-        nameEn: name,
-        nameSi: "",
-        unit: "",
-        breakfast: null,
-        lunch: null,
-        dinner: null,
-        grandTotal: Number(qty),
-        isExtra: true,
-        breakdown: [],
+        id: `extra-${name}`, nameEn: name, nameSi: "", unit: "",
+        breakfast: null, lunch: null, dinner: null,
+        grandTotal: Number(qty), isExtra: true, breakdown: [],
       });
     }
   }
@@ -331,22 +210,19 @@ function groupResultsForFrontend(results) {
 }
 
 // ──────────────────────────────────────────────────
-// Helper: Build diet instructions for cook sheet
-// ──────────────────────────────────────────────────
-
 function buildDietInstructions(lineItems) {
   const instructions = [];
 
-  // Find rice items (category 1)
-  const riceItems = lineItems.filter((li) => li.categoryId <= 1 && !li.nameEn?.toLowerCase().includes("bread"));
+  const riceItems = lineItems.filter((li) => {
+    const catId = Number(li.categoryId) || 0;
+    return catId === 1 && !li.nameEn?.toLowerCase().includes("bread");
+  });
   const breadItems = lineItems.filter((li) => li.nameEn?.toLowerCase().includes("bread"));
 
-  // Aggregate rice by meal
   const riceMeals = { breakfast: 0, lunch: 0, dinner: 0 };
   for (const li of riceItems) {
     riceMeals[li.meal] = (riceMeals[li.meal] || 0) + li.displayValue;
   }
-
   instructions.push({
     type: "Rice (Kg)",
     breakfast: Math.round(riceMeals.breakfast * 100) / 100 || null,
@@ -354,7 +230,6 @@ function buildDietInstructions(lineItems) {
     dinner: Math.round(riceMeals.dinner * 100) / 100 || null,
   });
 
-  // Bread
   const breadMeals = { breakfast: 0, lunch: 0, dinner: 0 };
   for (const li of breadItems) {
     breadMeals[li.meal] = (breadMeals[li.meal] || 0) + li.displayValue;
@@ -370,37 +245,21 @@ function buildDietInstructions(lineItems) {
 }
 
 // ──────────────────────────────────────────────────
-// Helper: Build protein allocation for cook sheet
-// ──────────────────────────────────────────────────
-
 function buildProteinAllocation(lineItems) {
-  const proteinItems = lineItems.filter((li) => li.isProtein);
+  const proteinItems = lineItems.filter((li) => !!li.isProtein);
   const allocation = {};
 
   for (const li of proteinItems) {
     if (!allocation[li.itemId]) {
-      allocation[li.itemId] = {
-        nameEn: li.nameEn,
-        nameSi: li.nameSi,
-        unit: li.unit,
-        children: 0,
-        patients: 0,
-        staff: 0,
-      };
+      allocation[li.itemId] = { nameEn: li.nameEn, nameSi: li.nameSi, unit: li.unit, children: 0, patients: 0, staff: 0 };
     }
-
     const a = allocation[li.itemId];
     const bd = li.breakdown || {};
-
     for (const [code, data] of Object.entries(bd)) {
       const totalKg = data.totalG / 1000;
-      if (code === "STAFF") {
-        a.staff += totalKg;
-      } else if (["S1", "S2", "S3", "S4", "S5"].includes(code)) {
-        a.children += totalKg;
-      } else {
-        a.patients += totalKg;
-      }
+      if (code === "STAFF") a.staff += totalKg;
+      else if (["S1", "S2", "S3", "S4", "S5"].includes(code)) a.children += totalKg;
+      else a.patients += totalKg;
     }
   }
 
