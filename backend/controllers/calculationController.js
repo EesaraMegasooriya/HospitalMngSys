@@ -167,32 +167,32 @@ function groupResultsForFrontend(results) {
     item.grandTotal = roundDisplay(toDisplayUnit(item.grandTotalBase, item.unit), item.unit);
   }
 
-  // ──── DEBUG: Remove this block after fixing ────
-  console.log("\n=== TAB GROUPING DEBUG ===");
-  for (const item of Object.values(itemMap)) {
-    console.log(`  "${item.nameEn}" → categoryId=${item.categoryId} (${typeof item.categoryId}) | isProtein=${item.isProtein} (${typeof item.isProtein}) | isVegetable=${item.isVegetable} (${typeof item.isVegetable})`);
-  }
-  console.log("=========================\n");
-  // ──── END DEBUG ────
+  // Map category IDs to their corresponding frontend tabs
+  const categoryTabMap = {
+    1: 'rice',        // Rice / Bread / Noodles / Hoppers
+    2: 'protein',     // Meat / Fish / Egg / Dried Fish (fallback)
+    3: 'vegetables',  // Vegetables - Palaa (Leaves) (fallback)
+    4: 'vegetables',  // Vegetables - Gedi (Vegetable Fruits) (fallback)
+    5: 'vegetables',  // Vegetables - Piti (Starchy) (fallback)
+    6: 'vegetables',  // Vegetables - Other (fallback)
+    7: 'extras',      // Fruits
+    8: 'condiments',  // Currystuffs & Condiments
+    9: 'extras',      // Sugar / Milk & Milk Products
+    10: 'extras',     // Biscuits
+    11: 'extras',     // Nutritional Supplements
+  };
 
-  // Categorize — using !! for booleans and Number() for categoryId
+  // Categorize items into tabs, using boolean flags first, then category mapping
   for (const item of Object.values(itemMap)) {
-    const catId = Number(item.categoryId) || 0;
-
-    if (!!item.isProtein) {
+    if (item.isProtein) {
       tabs.protein.push(item);
-    } else if (!!item.isVegetable) {
+    } else if (item.isVegetable) {
       tabs.vegetables.push(item);
-    } else if (catId === 1) {
-      tabs.rice.push(item);
-    } else if (catId === 8) {
-      tabs.condiments.push(item);
     } else {
-      tabs.extras.push(item);
+      const tabKey = categoryTabMap[Number(item.categoryId)] || 'extras';
+      tabs[tabKey].push(item);
     }
   }
-
-  console.log(`Tab counts → rice:${tabs.rice.length} protein:${tabs.protein.length} veg:${tabs.vegetables.length} condiments:${tabs.condiments.length} extras:${tabs.extras.length}`);
 
   // Add raw-sum extras
   const extrasTotals = results.run.extrasTotals || {};
