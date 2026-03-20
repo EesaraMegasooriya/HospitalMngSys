@@ -1,6 +1,7 @@
 const calculationModel = require("../models/calculationModel");
 const { writeAudit } = require("../utils/audit");
 const { getBaseUnit, toDisplayUnit, roundDisplay } = require("../utils/uom");
+const pool = require("../config/db");
 
 exports.runCalculation = async (req, res) => {
   try {
@@ -43,11 +44,16 @@ exports.getResults = async (req, res) => {
     const results = await calculationModel.getCalculationResults(date);
     if (!results) return res.status(404).json({ message: "No calculation results found for this date" });
 
-    const grouped = groupResultsForFrontend(results);
+    // Fetch all categories from database for dynamic tab grouping
+    const catResult = await pool.query(`SELECT id, name FROM categories ORDER BY id ASC`);
+    const categories = catResult.rows;
+
+    const grouped = groupResultsForFrontend(results, categories);
 
     res.status(200).json({
       run: results.run,
-      tabs: grouped,
+      tabs: grouped.tabs,
+      categories: grouped.categories,
       vegSummaries: results.vegSummaries,
       recipeResults: results.recipeResults,
       poLineItems: results.poLineItems,
@@ -132,9 +138,10 @@ exports.getItemBreakdown = async (req, res) => {
 // Helper: Group results into frontend tab structure
 // ──────────────────────────────────────────────────
 
-function groupResultsForFrontend(results) {
-  const tabs = { rice: [], protein: [], vegetables: [], condiments: [], extras: [] };
+// Special tab key for raw-sum extras that don't correspond to a DB category
+const EXTRAS_TAB_KEY = 'extras';
 
+function groupResultsForFrontend(results, categories) {
   const itemMap = {};
   for (const li of results.lineItems) {
     if (!itemMap[li.itemId]) {
@@ -145,8 +152,6 @@ function groupResultsForFrontend(results) {
         unit: li.unit,
         categoryId: li.categoryId,
         categoryName: li.categoryName,
-        isProtein: li.isProtein,
-        isVegetable: li.isVegetable,
         breakfast: null, lunch: null, dinner: null,
         grandTotal: 0, grandTotalBase: 0, breakdown: [],
       };
@@ -167,38 +172,28 @@ function groupResultsForFrontend(results) {
     item.grandTotal = roundDisplay(toDisplayUnit(item.grandTotalBase, item.unit), item.unit);
   }
 
-  // Map category IDs to their corresponding frontend tabs
-  const categoryTabMap = {
-    1: 'rice',        // Rice / Bread / Noodles / Hoppers
-    2: 'protein',     // Meat / Fish / Egg / Dried Fish (fallback)
-    3: 'vegetables',  // Vegetables - Palaa (Leaves) (fallback)
-    4: 'vegetables',  // Vegetables - Gedi (Vegetable Fruits) (fallback)
-    5: 'vegetables',  // Vegetables - Piti (Starchy) (fallback)
-    6: 'vegetables',  // Vegetables - Other (fallback)
-    7: 'extras',      // Fruits
-    8: 'condiments',  // Currystuffs & Condiments
-    9: 'extras',      // Sugar / Milk & Milk Products
-    10: 'extras',     // Biscuits
-    11: 'extras',     // Nutritional Supplements
-  };
+  // Build tabs object keyed by category ID (string) using database categories
+  const tabs = {};
+  for (const cat of categories) {
+    tabs[String(cat.id)] = [];
+  }
+  tabs[EXTRAS_TAB_KEY] = [];
 
-  // Categorize items into tabs, using boolean flags first, then category mapping
+  // Group items by category_id from the database — no hardcoded flags
   for (const item of Object.values(itemMap)) {
-    if (item.isProtein) {
-      tabs.protein.push(item);
-    } else if (item.isVegetable) {
-      tabs.vegetables.push(item);
+    const catId = String(item.categoryId);
+    if (catId && tabs[catId] !== undefined) {
+      tabs[catId].push(item);
     } else {
-      const tabKey = categoryTabMap[Number(item.categoryId)] || 'extras';
-      tabs[tabKey].push(item);
+      tabs[EXTRAS_TAB_KEY].push(item);
     }
   }
 
-  // Add raw-sum extras
+  // Add raw-sum extras (census extra items) to the extras tab
   const extrasTotals = results.run.extrasTotals || {};
   for (const [name, qty] of Object.entries(extrasTotals)) {
     if (Number(qty) > 0) {
-      tabs.extras.push({
+      tabs[EXTRAS_TAB_KEY].push({
         id: `extra-${name}`, nameEn: name, nameSi: "", unit: "",
         breakfast: null, lunch: null, dinner: null,
         grandTotal: Number(qty), isExtra: true, breakdown: [],
@@ -206,7 +201,16 @@ function groupResultsForFrontend(results) {
     }
   }
 
-  return tabs;
+  // Return only populated category tabs, preserving DB order
+  const activeCategories = categories
+    .filter((cat) => tabs[String(cat.id)]?.length > 0)
+    .map((cat) => ({ id: String(cat.id), name: cat.name }));
+
+  if (tabs[EXTRAS_TAB_KEY].length > 0) {
+    activeCategories.push({ id: EXTRAS_TAB_KEY, name: 'Extras & Specials' });
+  }
+
+  return { tabs, categories: activeCategories };
 }
 
 // ──────────────────────────────────────────────────

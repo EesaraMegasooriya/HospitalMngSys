@@ -23,26 +23,19 @@ const getAuthHeaders = () => {
 
 const today = new Date().toISOString().split("T")[0];
 
-const TAB_LABELS = {
-  rice: "Rice & Staples",
-  protein: "Protein",
-  vegetables: "Vegetables",
-  condiments: "Condiments",
-  extras: "Extras & Specials",
-};
-
 const CalculationResults = () => {
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("rice");
+  const [activeTab, setActiveTab] = useState(null);
   const [breakdownItem, setBreakdownItem] = useState(null);
   const [breakdownData, setBreakdownData] = useState(null);
   const [loadingBreakdown, setLoadingBreakdown] = useState(false);
 
   // Data from API
   const [calcRun, setCalcRun] = useState(null);
-  const [tabs, setTabs] = useState({ rice: [], protein: [], vegetables: [], condiments: [], extras: [] });
+  const [tabs, setTabs] = useState({}); // keyed by category ID (string)
+  const [categories, setCategories] = useState([]); // [{ id: "1", name: "..." }, ...]
   const [vegSummaries, setVegSummaries] = useState([]);
   const [vegItems, setVegItems] = useState({}); // Available vegetables per category from items table
 
@@ -65,7 +58,12 @@ const CalculationResults = () => {
         }
 
         setCalcRun(data.run);
-        setTabs(data.tabs || { rice: [], protein: [], vegetables: [], condiments: [], extras: [] });
+        setTabs(data.tabs || {});
+        const cats = data.categories || [];
+        setCategories(cats);
+        if (cats.length > 0) {
+          setActiveTab(String(cats[0].id));
+        }
         setVegSummaries(data.vegSummaries || []);
 
         // Initialize empty allocations for each veg category
@@ -342,22 +340,30 @@ const CalculationResults = () => {
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)}>
         <TabsList className="flex flex-wrap h-auto gap-1">
-          {Object.keys(TAB_LABELS).map((t) => (
-            <TabsTrigger key={t} value={t} className="text-label">
-              {TAB_LABELS[t]}
+          {categories.map((cat) => (
+            <TabsTrigger key={cat.id} value={String(cat.id)} className="text-label">
+              {cat.name}
             </TabsTrigger>
           ))}
         </TabsList>
-        {Object.keys(TAB_LABELS).map((t) => (
-          <TabsContent key={t} value={t}>
+        {categories.map((cat) => (
+          <TabsContent key={cat.id} value={String(cat.id)}>
             <Card>
               <CardContent className="pt-4">
-                {t === "vegetables" ? renderVegetables() : renderTable(tabs[t] || [])}
+                {renderTable(tabs[String(cat.id)] || [])}
               </CardContent>
             </Card>
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Vegetable Allocation Section */}
+      {vegSummaries.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-heading-sm font-semibold text-foreground">Vegetable Allocation</h2>
+          {renderVegetables()}
+        </div>
+      )}
 
       {/* Breakdown Dialog */}
       <Dialog
