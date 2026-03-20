@@ -1,3 +1,14 @@
+/**
+ * UOM (Unit of Measure) Strategy
+ * ================================
+ * ALL calculations happen in BASE UNITS:
+ *   Mass   → grams (g)
+ *   Volume → milliliters (ml)
+ *   Count  → pieces (pcs)
+ *
+ * Only at display time do we convert to the item's preferred unit.
+ */
+
 // Map item units → base unit type
 const UNIT_TO_BASE = {
   // Mass

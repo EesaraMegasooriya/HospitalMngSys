@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,51 +6,213 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { MOCK_WARD_STATUSES, MOCK_AGGREGATED } from "@/lib/calculation-data";
 import { CheckCircle2, Clock, Square, Calculator, Loader2, Leaf, Drumstick } from "lucide-react";
+
+const API_BASE = "http://localhost:5050/api";
+
+const getAuthHeaders = () => {
+  const token = sessionStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+};
+
+const today = new Date().toISOString().split("T")[0];
 
 const Calculations = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+
   const [isCalculating, setIsCalculating] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const submitted = MOCK_WARD_STATUSES.filter((w) => w.status === "submitted").length;
-  const total = MOCK_WARD_STATUSES.length;
-  const allSubmitted = submitted === total;
-  const pct = Math.round((submitted / total) * 100);
-  const agg = MOCK_AGGREGATED;
+  // Real data from API
+  const [wards, setWards] = useState([]);
+  const [wardStatuses, setWardStatuses] = useState([]);
+  const [staffMeals, setStaffMeals] = useState(null);
+  const [dailyCycle, setDailyCycle] = useState({ patientCycle: "Vegetable", staffCycle: "Chicken" });
+  const [dietTypes, setDietTypes] = useState([]);
 
-  const handleRunCalc = () => {
+  // Fetch all data on mount
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        setLoading(true);
+
+        const [wardsRes, statusesRes, staffRes, cycleRes, dietTypesRes] = await Promise.all([
+          fetch(`${API_BASE}/wards`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/census/statuses?date=${today}`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/census/staff?date=${today}`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/daily-cycle?date=${today}`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/diet-types`, { headers: getAuthHeaders() }),
+        ]);
+
+        const wardsData = await wardsRes.json();
+        const statusesData = await statusesRes.json();
+        const staffData = await staffRes.json();
+        const cycleData = await cycleRes.json();
+        const dietTypesData = await dietTypesRes.json();
+
+        setWards(wardsData.wards || []);
+        setDietTypes((dietTypesData.dietTypes || []).filter((d) => d.active && d.type !== "Staff"));
+
+        // Build ward statuses by merging wards with census statuses
+        const statuses = statusesData.statuses || [];
+        const merged = (wardsData.wards || []).map((w) => {
+          const census = statuses.find((s) => String(s.wardId) === String(w.id));
+          return {
+            wardId: w.id,
+            wardName: w.ward_name || w.wardName || w.name,
+            code: w.ward_code || w.wardCode || w.code,
+            status: census?.status || "not_started",
+            patientCount: census?.totalPatients || 0,
+          };
+        });
+        setWardStatuses(merged);
+
+        if (staffData.staffMeals) {
+          setStaffMeals(staffData.staffMeals);
+        }
+
+        if (cycleData.cycle) {
+          setDailyCycle(cycleData.cycle);
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to load calculation data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAll();
+  }, [toast]);
+
+  // Compute stats
+  const submitted = wardStatuses.filter(
+    (w) => w.status === "submitted" || w.status === "locked"
+  ).length;
+  const total = wardStatuses.length;
+  const allSubmitted = total > 0 && submitted === total;
+  const pct = total > 0 ? Math.round((submitted / total) * 100) : 0;
+
+  // Aggregate patient totals from ward statuses
+  // We need to fetch actual census data for aggregation
+  const [aggregated, setAggregated] = useState(null);
+
+  useEffect(() => {
+    const fetchAggregated = async () => {
+      if (submitted === 0) return;
+
+      try {
+        // Fetch all submissions for today to get diet breakdowns
+        const res = await fetch(`${API_BASE}/census/my-submissions?date=${today}`, {
+          headers: getAuthHeaders(),
+        });
+        const data = await res.json();
+        const submissions = data.submissions || [];
+
+        // Aggregate across all wards
+        const totals = {};
+        dietTypes.forEach((dt) => {
+          totals[dt.code || dt.id] = 0;
+        });
+
+        for (const sub of submissions) {
+          const diets = sub.diets || {};
+          for (const [key, value] of Object.entries(diets)) {
+            if (totals[key] !== undefined) {
+              totals[key] += Number(value) || 0;
+            } else {
+              totals[key] = Number(value) || 0;
+            }
+          }
+        }
+
+        const totalPatients = Object.values(totals).reduce((s, v) => s + v, 0);
+
+        setAggregated({
+          totals,
+          totalPatients,
+          staffB: staffMeals?.breakfast || 0,
+          staffL: staffMeals?.lunch || 0,
+          staffD: staffMeals?.dinner || 0,
+          totalStaff:
+            (staffMeals?.breakfast || 0) +
+            (staffMeals?.lunch || 0) +
+            (staffMeals?.dinner || 0),
+        });
+      } catch (error) {
+        console.error("Failed to aggregate:", error);
+      }
+    };
+
+    if (dietTypes.length > 0) {
+      fetchAggregated();
+    }
+  }, [submitted, dietTypes, staffMeals]);
+
+  // Run calculation via backend
+  const handleRunCalc = async () => {
     setIsCalculating(true);
-    setTimeout(() => {
-      toast({ title: "Calculation Complete", description: "Ingredient requirements have been calculated." });
+    try {
+      const res = await fetch(`${API_BASE}/calculations/run`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ date: today }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Calculation failed");
+      }
+
+      toast({
+        title: "Calculation Complete",
+        description: "Ingredient requirements have been calculated.",
+      });
+
       navigate("/calculations/results");
-    }, 1500);
+    } catch (error) {
+      toast({
+        title: "Calculation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
   const statusIcon = (status) => {
-    if (status === "submitted") return <CheckCircle2 className="h-5 w-5 text-primary" />;
+    if (status === "submitted" || status === "locked")
+      return <CheckCircle2 className="h-5 w-5 text-primary" />;
     if (status === "draft") return <Clock className="h-5 w-5 text-warning" />;
     return <Square className="h-5 w-5 text-muted-foreground" />;
   };
 
-  const statCards = [
-    { label: "Normal", value: agg.normal },
-    { label: "Diabetic", value: agg.diabetic },
-    { label: "S1", value: agg.s1 },
-    { label: "S2", value: agg.s2 },
-    { label: "S3", value: agg.s3 },
-    { label: "S4", value: agg.s4 },
-    { label: "S5", value: agg.s5 },
-    { label: "HPD", value: agg.hpd },
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Loading ward data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-heading-md font-bold text-foreground">Ward Submissions & Calculation</h1>
+        <h1 className="text-heading-md font-bold text-foreground">
+          Ward Submissions & Calculation
+        </h1>
         <div className="flex items-center gap-2 text-label text-muted-foreground">
-          <span>2026-03-02</span>
+          <span>{today}</span>
         </div>
       </div>
 
@@ -60,16 +222,18 @@ const Calculations = () => {
           <div className="flex items-center gap-2">
             <span className="text-label font-semibold">Patient Cycle:</span>
             <Badge className="bg-primary text-primary-foreground capitalize gap-1.5">
-              <Leaf className="h-3.5 w-3.5" /> Vegetable
+              <Leaf className="h-3.5 w-3.5" /> {dailyCycle.patientCycle}
             </Badge>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-label font-semibold">Staff Cycle:</span>
             <Badge className="bg-badge-hospital text-primary-foreground capitalize gap-1.5">
-              <Drumstick className="h-3.5 w-3.5" /> Chicken
+              <Drumstick className="h-3.5 w-3.5" /> {dailyCycle.staffCycle}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground italic ml-auto">Set by Hospital Admin</p>
+          <p className="text-xs text-muted-foreground italic ml-auto">
+            Set by Hospital Admin
+          </p>
         </CardContent>
       </Card>
 
@@ -80,7 +244,9 @@ const Calculations = () => {
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="flex justify-between text-label">
-            <span>{submitted} / {total} wards submitted</span>
+            <span>
+              {submitted} / {total} wards submitted
+            </span>
             <span className="font-semibold">{pct}%</span>
           </div>
           <Progress value={pct} className="h-3" />
@@ -89,8 +255,17 @@ const Calculations = () => {
 
       {/* Ward grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {MOCK_WARD_STATUSES.map((w) => (
-          <Card key={w.wardId} className={`p-3 ${w.status === "submitted" ? "border-primary/40 bg-primary/5" : w.status === "draft" ? "border-warning/40 bg-warning/5" : ""}`}>
+        {wardStatuses.map((w) => (
+          <Card
+            key={w.wardId}
+            className={`p-3 ${
+              w.status === "submitted" || w.status === "locked"
+                ? "border-primary/40 bg-primary/5"
+                : w.status === "draft"
+                ? "border-warning/40 bg-warning/5"
+                : ""
+            }`}
+          >
             <div className="flex items-start justify-between">
               <div className="min-w-0">
                 <p className="text-label font-semibold truncate">{w.wardName}</p>
@@ -98,8 +273,10 @@ const Calculations = () => {
               </div>
               {statusIcon(w.status)}
             </div>
-            {w.status === "submitted" && (
-              <p className="text-xs text-primary font-medium mt-1">{w.patientCount} patients</p>
+            {(w.status === "submitted" || w.status === "locked") && (
+              <p className="text-xs text-primary font-medium mt-1">
+                {w.patientCount} patients
+              </p>
             )}
             {w.status === "draft" && (
               <p className="text-xs text-warning font-medium mt-1">Draft</p>
@@ -109,43 +286,47 @@ const Calculations = () => {
       </div>
 
       {/* Aggregated totals */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-label font-semibold">Aggregated Totals</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-            {statCards.map((s) => (
-              <div key={s.label} className="bg-muted rounded-lg p-2 text-center">
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-                <p className="text-lg font-bold text-foreground">{s.value}</p>
+      {aggregated && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-label font-semibold">Aggregated Totals</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+              {dietTypes.map((dt) => (
+                <div key={dt.code || dt.id} className="bg-muted rounded-lg p-2 text-center">
+                  <p className="text-xs text-muted-foreground">{dt.nameEn || dt.name_en}</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {aggregated.totals[dt.code || dt.id] || 0}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              <div className="bg-muted rounded-lg p-2 text-center">
+                <p className="text-xs text-muted-foreground">Staff B</p>
+                <p className="text-lg font-bold">{aggregated.staffB}</p>
               </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            <div className="bg-muted rounded-lg p-2 text-center">
-              <p className="text-xs text-muted-foreground">Staff B</p>
-              <p className="text-lg font-bold">{agg.staffB}</p>
+              <div className="bg-muted rounded-lg p-2 text-center">
+                <p className="text-xs text-muted-foreground">Staff L</p>
+                <p className="text-lg font-bold">{aggregated.staffL}</p>
+              </div>
+              <div className="bg-muted rounded-lg p-2 text-center">
+                <p className="text-xs text-muted-foreground">Staff D</p>
+                <p className="text-lg font-bold">{aggregated.staffD}</p>
+              </div>
+              <div className="bg-primary/10 rounded-lg p-2 text-center border border-primary/30">
+                <p className="text-xs text-primary font-medium">Total Patients</p>
+                <p className="text-lg font-bold text-primary">{aggregated.totalPatients}</p>
+              </div>
+              <div className="bg-primary/10 rounded-lg p-2 text-center border border-primary/30">
+                <p className="text-xs text-primary font-medium">Total Staff</p>
+                <p className="text-lg font-bold text-primary">{aggregated.totalStaff}</p>
+              </div>
             </div>
-            <div className="bg-muted rounded-lg p-2 text-center">
-              <p className="text-xs text-muted-foreground">Staff L</p>
-              <p className="text-lg font-bold">{agg.staffL}</p>
-            </div>
-            <div className="bg-muted rounded-lg p-2 text-center">
-              <p className="text-xs text-muted-foreground">Staff D</p>
-              <p className="text-lg font-bold">{agg.staffD}</p>
-            </div>
-            <div className="bg-primary/10 rounded-lg p-2 text-center border border-primary/30">
-              <p className="text-xs text-primary font-medium">Total Patients</p>
-              <p className="text-lg font-bold text-primary">{agg.totalPatients}</p>
-            </div>
-            <div className="bg-primary/10 rounded-lg p-2 text-center border border-primary/30">
-              <p className="text-xs text-primary font-medium">Total Staff</p>
-              <p className="text-lg font-bold text-primary">{agg.totalStaff}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Run Calculation */}
       <div className="flex justify-center">
@@ -159,15 +340,21 @@ const Calculations = () => {
                 onClick={handleRunCalc}
               >
                 {isCalculating ? (
-                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Calculating...</>
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Calculating...
+                  </>
                 ) : (
-                  <><Calculator className="mr-2 h-5 w-5" /> Run Calculation</>
+                  <>
+                    <Calculator className="mr-2 h-5 w-5" /> Run Calculation
+                  </>
                 )}
               </Button>
             </span>
           </TooltipTrigger>
           {!allSubmitted && (
-            <TooltipContent>All wards must be submitted before running calculation</TooltipContent>
+            <TooltipContent>
+              All wards must be submitted before running calculation
+            </TooltipContent>
           )}
         </Tooltip>
       </div>
