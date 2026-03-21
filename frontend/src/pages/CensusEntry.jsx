@@ -152,7 +152,7 @@ const CensusEntryPage = () => {
     const res = await fetch(WARDS_API, { headers: getAuthHeaders() });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Failed to fetch wards");
-    return data.wards || [];
+    return (data.wards || []).filter(ward => ward.active); 
   };
 
   const fetchStatuses = async () => {
