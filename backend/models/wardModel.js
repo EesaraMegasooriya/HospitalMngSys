@@ -141,4 +141,5 @@ module.exports = {
   createWard,
   updateWard,
   toggleWardStatus,
+  updateWardStatus: toggleWardStatus,
 };

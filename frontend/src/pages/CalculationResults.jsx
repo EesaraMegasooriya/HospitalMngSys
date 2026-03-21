@@ -222,12 +222,9 @@ const CalculationResults = () => {
     <div className="space-y-6">
       {vegSummaries.map((vs) => {
         const catKey = vs.vegCategory;
-        const catName = {
-          palaa: "Palaa (Leafy Vegetables)",
-          gedi: "Gedi (Vegetable Fruits)",
-          piti: "Piti (Starchy Vegetables)",
-          other: "Other Vegetables",
-        }[catKey] || catKey;
+        // Dynamic label: find matching category from items, or capitalize the key
+        const matchingItems = (vegItems[catKey] || []);
+        const catName = catKey.charAt(0).toUpperCase() + catKey.slice(1) + " Vegetables";
 
         const allocs = vegAllocations[catKey] || [];
         const allocated = allocs.reduce((s, a) => s + (a.quantityKg || 0), 0);

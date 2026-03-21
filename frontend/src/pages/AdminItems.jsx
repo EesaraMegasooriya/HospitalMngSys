@@ -32,14 +32,10 @@ const DEFAULT_UNITS = [
   "100g", "400g", "1L", "180ml", "375ml", "Pcs", "Fruit", "Pkt",
 ];
 
-const DIET_CYCLE_OPTIONS = ["Vegetable", "Egg", "Meat", "Dried Fish", "Fish"];
-
-const VEG_CAT_OPTIONS = [
-  { value: "palaa", label: "Palaa / Leaves" },
-  { value: "gedi", label: "Gedi / Vegetable Fruits" },
-  { value: "piti", label: "Piti / Starchy" },
-  { value: "other", label: "Other" },
-];
+// Vegetable categories are derived from the categories list at runtime
+// Any category that contains "vegetable", "palaa", "gedi", "piti" in its name
+// is considered a vegetable category. New categories added by the admin
+// will also appear if they are assigned as veg categories to items.
 
 const AdminItems = () => {
   const { toast } = useToast();
@@ -48,6 +44,7 @@ const AdminItems = () => {
   const [selectedCat, setSelectedCat] = useState(null);
   const [items, setItems] = useState([]);
   const [units, setUnits] = useState([...DEFAULT_UNITS]);
+  const [dietCycles, setDietCycles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -57,7 +54,7 @@ const AdminItems = () => {
   const [isProteinOn, setIsProteinOn] = useState(false);
   const [isVegOn, setIsVegOn] = useState(false);
   const [isExtraOn, setIsExtraOn] = useState(false);
-  const [dietCycle, setDietCycle] = useState("Vegetable");
+  const [dietCycle, setDietCycle] = useState("");
 
   const [catDialogOpen, setCatDialogOpen] = useState(false);
   const [catForm, setCatForm] = useState({ name: "" });
@@ -90,10 +87,21 @@ const AdminItems = () => {
     }
   };
 
+  const fetchDietCycles = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/diet-cycles`, { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to fetch diet cycles");
+      setDietCycles((data.cycles || []).filter((c) => c.active));
+    } catch (error) {
+      console.error("Failed to fetch diet cycles:", error);
+    }
+  };
+
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      await Promise.all([fetchCategories(), fetchItems()]);
+      await Promise.all([fetchCategories(), fetchItems(), fetchDietCycles()]);
       setLoading(false);
     };
     loadAll();
@@ -102,6 +110,47 @@ const AdminItems = () => {
   const filtered = selectedCat
     ? items.filter((i) => i.categoryId === selectedCat)
     : items;
+
+  // Build vegetable category options dynamically from:
+  // 1. Categories whose name contains vegetable-related keywords
+  // 2. Any unique vegCategory values already used by existing items
+  const vegCatOptions = (() => {
+    const options = new Map();
+
+    // From categories — any category with "vegetable", "palaa", "gedi", "piti" in name
+    const vegKeywords = ["vegetable", "palaa", "gedi", "piti", "pishta", "elawalu"];
+    for (const cat of categories) {
+      const nameLower = (cat.name || "").toLowerCase();
+      if (vegKeywords.some((kw) => nameLower.includes(kw))) {
+        // Create a short key from the category name
+        let key = nameLower;
+        if (nameLower.includes("palaa")) key = "palaa";
+        else if (nameLower.includes("gedi") || nameLower.includes("elawalu")) key = "gedi";
+        else if (nameLower.includes("piti") || nameLower.includes("pishta") || nameLower.includes("starchy")) key = "piti";
+        else if (nameLower.includes("other")) key = "other";
+        else key = nameLower.replace(/[^a-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+
+        options.set(key, { value: key, label: cat.name, categoryId: cat.id });
+      }
+    }
+
+    // From existing items — pick up any vegCategory values not already in the list
+    for (const item of items) {
+      if (item.vegCategory && !options.has(item.vegCategory)) {
+        options.set(item.vegCategory, {
+          value: item.vegCategory,
+          label: item.vegCategory.charAt(0).toUpperCase() + item.vegCategory.slice(1),
+        });
+      }
+    }
+
+    // If nothing was found, add a default "other"
+    if (options.size === 0) {
+      options.set("other", { value: "other", label: "Other" });
+    }
+
+    return Array.from(options.values());
+  })();
 
   // ─── Category CRUD ───
   const openAddCategory = () => {
@@ -178,7 +227,7 @@ const AdminItems = () => {
     setIsProteinOn(false);
     setIsVegOn(false);
     setIsExtraOn(false);
-    setDietCycle("Vegetable");
+    setDietCycle(dietCycles.length > 0 ? dietCycles[0].nameEn : "");
     setItemDialogOpen(true);
   };
 
@@ -196,7 +245,7 @@ const AdminItems = () => {
     setIsProteinOn(item.isProtein || false);
     setIsVegOn(item.isVegetable || false);
     setIsExtraOn(item.isExtra || false);
-    setDietCycle(item.dietCycle || "Vegetable");
+    setDietCycle(item.dietCycle || (dietCycles.length > 0 ? dietCycles[0].nameEn : ""));
     setItemDialogOpen(true);
   };
 
@@ -229,7 +278,7 @@ const AdminItems = () => {
         isProtein: isProteinOn,
         dietCycle: isProteinOn ? dietCycle : null,
         isVegetable: isVegOn,
-        vegCategory: isVegOn ? newItem.vegCategory || "other" : null,
+        vegCategory: isVegOn ? newItem.vegCategory || (vegCatOptions[0]?.value) || "other" : null,
         isExtra: isExtraOn,
         calcType: isExtraOn ? newItem.calcType || "raw_sum" : "norm_weight",
       };
@@ -282,7 +331,7 @@ const AdminItems = () => {
 
       <div className="flex flex-col md:flex-row gap-6">
         {/* ─── Category Sidebar ─── */}
-        <Card className="md:w-83 shrink-0">
+        <Card className="md:w-82 shrink-0">
           <CardContent className="pt-4 space-y-1">
             <div className="flex items-center justify-between mb-3">
               <span className="text-label font-semibold text-muted-foreground">Categories</span>
@@ -370,7 +419,9 @@ const AdminItems = () => {
                       <TableCell className="text-right">Rs. {item.defaultPrice}</TableCell>
                       <TableCell>
                         {item.isProtein && (
-                          <Badge className="bg-destructive/20 text-destructive">Yes</Badge>
+                          <Badge className="bg-destructive/20 text-destructive">
+                            {item.dietCycle || "Yes"}
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
@@ -538,13 +589,18 @@ const AdminItems = () => {
                 <div className="ml-4 space-y-1.5">
                   <Label className="text-label text-muted-foreground">Diet Cycle</Label>
                   <Select value={dietCycle} onValueChange={setDietCycle}>
-                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10"><SelectValue placeholder="Select diet cycle" /></SelectTrigger>
                     <SelectContent>
-                      {DIET_CYCLE_OPTIONS.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      {dietCycles.map((c) => (
+                        <SelectItem key={c.id} value={c.nameEn}>
+                          {c.nameSi ? `${c.nameSi} / ` : ""}{c.nameEn}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {dietCycles.length === 0 && (
+                    <p className="text-xs text-destructive">No diet cycles found. Add them in Diet Cycles page first.</p>
+                  )}
                 </div>
               )}
 
@@ -555,14 +611,17 @@ const AdminItems = () => {
               {isVegOn && (
                 <div className="ml-4 space-y-1.5">
                   <Label className="text-label text-muted-foreground">Vegetable Category</Label>
-                  <Select value={newItem.vegCategory || "other"} onValueChange={(v) => setNewItem((p) => ({ ...p, vegCategory: v }))}>
-                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                  <Select value={newItem.vegCategory || ""} onValueChange={(v) => setNewItem((p) => ({ ...p, vegCategory: v }))}>
+                    <SelectTrigger className="h-10"><SelectValue placeholder="Select vegetable category" /></SelectTrigger>
                     <SelectContent>
-                      {VEG_CAT_OPTIONS.map((c) => (
+                      {vegCatOptions.map((c) => (
                         <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {vegCatOptions.length === 0 && (
+                    <p className="text-xs text-destructive">No vegetable categories found. Create vegetable categories first.</p>
+                  )}
                 </div>
               )}
 
