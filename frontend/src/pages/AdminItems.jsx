@@ -29,7 +29,7 @@ const getAuthHeaders = () => {
 
 const DEFAULT_UNITS = [
   "Kg", "g", "One", "1 loaf", "Cup", "Bottle", "Pk",
-  "100g", "400g", "1L", "180ml", "375ml", "Pcs", "Fruit", "Pkt",
+  "100g", "400g", "L", "180ml", "375ml", "Pcs", "Fruit", "Pkt",
 ];
 
 // Vegetable categories are derived from the categories list at runtime
