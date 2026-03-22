@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,8 +25,10 @@ const today = new Date().toISOString().split("T")[0];
 
 const CalculationResults = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
+  const [generatingPO, setGeneratingPO] = useState(false);
   const [activeTab, setActiveTab] = useState(null);
   const [breakdownItem, setBreakdownItem] = useState(null);
   const [breakdownData, setBreakdownData] = useState(null);
@@ -448,14 +451,78 @@ const CalculationResults = () => {
           <Button
             size="lg"
             className="h-12 px-8"
-            onClick={() => {
-              toast({
-                title: "Draft PO Generated",
-                description: `Purchase order created with Rs. ${grandTotal.toLocaleString()} total`,
-              });
+            disabled={generatingPO}
+            onClick={async () => {
+              setGeneratingPO(true);
+              try {
+                // Build items payload from selections + allItemsByCategory
+                const selectedItems = [];
+                for (const [catId, catItems] of Object.entries(allItemsByCategory)) {
+                  for (const item of catItems) {
+                    const sel = selections[item.id];
+                    if (sel?.selected && sel.quantity > 0) {
+                      selectedItems.push({
+                        itemId: item.id,
+                        categoryId: parseInt(catId),
+                        quantity: sel.quantity,
+                        unit: item.unit,
+                        unitPrice: item.defaultPrice,
+                        defaultPrice: item.defaultPrice,
+                        forBreakfast: true,
+                        forLunch: true,
+                        forDinner: true,
+                        forExtra: false,
+                        forKanda: false,
+                      });
+                    }
+                  }
+                }
+
+                if (selectedItems.length === 0) {
+                  toast({ title: "No items selected", description: "Please select at least one item to order.", variant: "destructive" });
+                  setGeneratingPO(false);
+                  return;
+                }
+
+                const res = await fetch(`${API_BASE}/orders`, {
+                  method: "POST",
+                  headers: getAuthHeaders(),
+                  body: JSON.stringify({
+                    date: calcRun.date || today,
+                    calcRunId: calcRun.id,
+                    items: selectedItems,
+                  }),
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                  // If PO already exists, navigate to it
+                  if (res.status === 409 && data.existingId) {
+                    toast({ title: "PO Already Exists", description: "Navigating to existing purchase order." });
+                    navigate(`/orders/${data.existingId}`);
+                    return;
+                  }
+                  throw new Error(data.message || "Failed to create purchase order");
+                }
+
+                toast({
+                  title: "Purchase Order Created",
+                  description: `PO #${data.po.billNumber} created with Rs. ${data.po.originalTotal.toLocaleString()} total`,
+                });
+                navigate(`/orders/${data.po.id}`);
+              } catch (error) {
+                toast({ title: "Error", description: error.message, variant: "destructive" });
+              } finally {
+                setGeneratingPO(false);
+              }
             }}
           >
-            <FileText className="h-5 w-5 mr-2" /> Generate Purchase Order
+            {generatingPO ? (
+              <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Generating...</>
+            ) : (
+              <><FileText className="h-5 w-5 mr-2" /> Generate Purchase Order</>
+            )}
           </Button>
         </div>
       )}
