@@ -17,7 +17,7 @@ const normWeightRoutes = require("./routes/normalWeightRoutes");
 const recipesRoutes = require("./routes/recipesRoutes");
 const dietCycleRoutes = require("./routes/dietCycleRoutes");
 const dietTypeRoutes = require("./routes/dietTypesRoutes");
-
+const poRoutes = require("./routes/poRoutes");
 
 const itemsRoutes = require("./routes/itemsRoutes");
 
@@ -52,6 +52,7 @@ app.use("/api/norm-weights", normWeightRoutes);
 app.use("/api/items", itemsRoutes);
 app.use("/api/diet-types", dietTypeRoutes);
 app.use("/api/recipes", recipesRoutes);
+app.use("/api/orders", poRoutes);
 
 //-------------------------------------------------------------------------
 app.use("/api", hospitalAdminRoutes);

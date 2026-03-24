@@ -601,6 +601,11 @@ async function runCalculation(calcDate, userId) {
       [calcDate]
     );
     if (existingRun.rows.length > 0) {
+      // Delete any purchase orders linked to the old calculation run first
+      await client.query(
+        `DELETE FROM purchase_orders WHERE calc_run_id IN (SELECT id FROM calculation_runs WHERE calc_date = $1)`,
+        [calcDate]
+      );
       await client.query(
         `DELETE FROM calculation_runs WHERE calc_date = $1`,
         [calcDate]

@@ -54,12 +54,15 @@ const Calculations = () => {
         const cycleData = await cycleRes.json();
         const dietTypesData = await dietTypesRes.json();
 
-        setWards(wardsData.wards || []);
+        // THE FIX: Filter out deactivated wards immediately!
+        const activeWards = (wardsData.wards || []).filter((w) => w.active);
+        setWards(activeWards);
+        
         setDietTypes((dietTypesData.dietTypes || []).filter((d) => d.active && d.type !== "Staff"));
 
-        // Build ward statuses by merging wards with census statuses
+        // Build ward statuses by merging ONLY active wards with census statuses
         const statuses = statusesData.statuses || [];
-        const merged = (wardsData.wards || []).map((w) => {
+        const merged = activeWards.map((w) => {
           const census = statuses.find((s) => String(s.wardId) === String(w.id));
           return {
             wardId: w.id,
@@ -193,7 +196,8 @@ const Calculations = () => {
     if (status === "submitted" || status === "locked")
       return <CheckCircle2 className="h-5 w-5 text-primary" />;
     if (status === "draft") return <Clock className="h-5 w-5 text-warning" />;
-    return <Square className="h-5 w-5 text-muted-foreground" />;
+    // Apply matching golden brown/orange color to the pending icon
+    return <Square className="h-5 w-5 text-orange-500" />;
   };
 
   if (loading) {
@@ -258,12 +262,12 @@ const Calculations = () => {
         {wardStatuses.map((w) => (
           <Card
             key={w.wardId}
-            className={`p-3 ${
+            className={`p-3 border transition-colors ${
               w.status === "submitted" || w.status === "locked"
                 ? "border-primary/40 bg-primary/5"
                 : w.status === "draft"
                 ? "border-warning/40 bg-warning/5"
-                : ""
+                : "border-orange-500/40 bg-orange-500/5" // New golden brown border for pending
             }`}
           >
             <div className="flex items-start justify-between">
@@ -280,6 +284,10 @@ const Calculations = () => {
             )}
             {w.status === "draft" && (
               <p className="text-xs text-warning font-medium mt-1">Draft</p>
+            )}
+            {/* New Pending Text Label */}
+            {w.status === "not_started" && (
+              <p className="text-xs text-orange-600 font-medium mt-1">Pending</p>
             )}
           </Card>
         ))}
