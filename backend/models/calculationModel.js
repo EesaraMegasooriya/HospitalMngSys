@@ -97,10 +97,8 @@ function aggregateWardData(censusRows, dietTypes) {
     patientTotals[dt.code] = 0;
   });
 
-  // Sum special requests across all wards
-  let soupCount = 0;
-  let kandaCount = 0;
-  let polSambolaCount = 0;
+  // Sum special requests across all wards (dynamic — from recipes table)
+  const specialCounts = {};
 
   // Sum extra items across all wards (raw sums)
   const extrasTotals = {};
@@ -112,8 +110,6 @@ function aggregateWardData(censusRows, dietTypes) {
     // Aggregate patient counts by diet type code
     for (const [key, value] of Object.entries(diets)) {
       const count = Number(value) || 0;
-      // key might be diet type code (e.g., "NOR") or diet type id
-      // Try matching by code first, then by id
       const dt = dietTypes.find(
         (d) => String(d.code) === String(key) || String(d.id) === String(key)
       );
@@ -122,11 +118,11 @@ function aggregateWardData(censusRows, dietTypes) {
       }
     }
 
-    // Aggregate specials
+    // Aggregate specials dynamically (any recipe key from census special JSONB)
     const special = row.special || {};
-    soupCount += Number(special.soup) || 0;
-    kandaCount += Number(special.kanda) || 0;
-    polSambolaCount += Number(special.polSambola) || 0;
+    for (const [key, value] of Object.entries(special)) {
+      specialCounts[key] = (specialCounts[key] || 0) + (Number(value) || 0);
+    }
 
     // Aggregate extras (raw sum)
     const extras = row.extras || {};
@@ -153,9 +149,7 @@ function aggregateWardData(censusRows, dietTypes) {
 
   return {
     patientTotals,
-    soupCount,
-    kandaCount,
-    polSambolaCount,
+    specialCounts,
     extrasTotals,
     customExtrasTotals: Object.values(customExtrasTotals),
   };
@@ -378,21 +372,24 @@ function calculateRecipes(
   patientTotals,
   staffRow,
   dietTypes,
-  specialCounts // { polSambola: 45, soup: 30, kanda: 0 }
+  specialCounts // { polSambola: 45, soup: 30, kanda: 12, anyNewRecipe: 5 }
 ) {
   const recipeResults = [];
 
   for (const recipe of recipes) {
-    const key = recipe.recipe_key.toLowerCase();
-
-    // Determine the raw patient count for this recipe
+    // Dynamic lookup: match recipe_key against specialCounts keys
     let rawCount = 0;
-    if (key.includes("polsambola") || key.includes("pol_sambola") || key.includes("sambola")) {
-      rawCount = specialCounts.polSambola || 0;
-    } else if (key.includes("soup")) {
-      rawCount = specialCounts.soup || 0;
-    } else if (key.includes("kanda")) {
-      rawCount = specialCounts.kanda || 0;
+    if (specialCounts[recipe.recipe_key] !== undefined) {
+      rawCount = specialCounts[recipe.recipe_key];
+    } else {
+      // Fallback: case-insensitive match
+      const keyLower = recipe.recipe_key.toLowerCase();
+      for (const [sKey, sVal] of Object.entries(specialCounts)) {
+        if (sKey.toLowerCase() === keyLower) {
+          rawCount = sVal;
+          break;
+        }
+      }
     }
 
     if (rawCount === 0) continue; // No one ordered this recipe
@@ -580,11 +577,7 @@ async function runCalculation(calcDate, userId) {
       aggregated.patientTotals,
       staffRow,
       dietTypes,
-      {
-        polSambola: aggregated.polSambolaCount,
-        soup: aggregated.soupCount,
-        kanda: aggregated.kandaCount,
-      }
+      aggregated.specialCounts
     );
 
     // Step 6: Grand totals
@@ -630,9 +623,9 @@ async function runCalculation(calcDate, userId) {
         staffRow?.breakfast || 0,
         staffRow?.lunch || 0,
         staffRow?.dinner || 0,
-        aggregated.soupCount,
-        aggregated.kandaCount,
-        aggregated.polSambolaCount,
+        aggregated.specialCounts.soup || 0,
+        aggregated.specialCounts.kanda || 0,
+        aggregated.specialCounts.polSambola || 0,
         JSON.stringify(aggregated.extrasTotals),
         JSON.stringify(aggregated.customExtrasTotals),
         userId,
@@ -783,6 +776,11 @@ async function getCalculationResults(calcDate) {
       soupCount: run.soup_count,
       kandaCount: run.kanda_count,
       polSambolaCount: run.pol_sambola_count,
+      specialCounts: run.special_counts || {
+        soup: run.soup_count,
+        kanda: run.kanda_count,
+        polSambola: run.pol_sambola_count,
+      },
       extrasTotals: run.extras_totals,
       customExtrasTotals: run.custom_extras_totals,
       status: run.status,

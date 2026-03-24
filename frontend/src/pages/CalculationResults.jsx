@@ -42,6 +42,9 @@ const CalculationResults = () => {
   // ALL items from database grouped by categoryId
   const [allItemsByCategory, setAllItemsByCategory] = useState({});
 
+  // Recipe results (Pol Sambola, Soup, Kanda, etc.)
+  const [recipeResults, setRecipeResults] = useState([]);
+
   // Selected items for ordering: { itemId: { selected: true, quantity: 4.905, customPrice: null } }
   const [selections, setSelections] = useState({});
 
@@ -66,6 +69,9 @@ const CalculationResults = () => {
         const cats = calcData.categories || [];
         setCategories(cats);
         if (cats.length > 0) setActiveTab(String(cats[0].id));
+
+        // Store recipe results
+        setRecipeResults(calcData.recipeResults || []);
 
         // Group ALL items by categoryId
         const items = itemsData.items || [];
@@ -436,6 +442,65 @@ const CalculationResults = () => {
           );
         })}
       </Tabs>
+
+      {/* Special Requests — Recipe Calculations */}
+      {recipeResults.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-heading-sm font-semibold text-foreground">
+            Special Requests — Recipe Calculations
+          </h2>
+          {recipeResults.map((recipe) => (
+            <Card key={recipe.recipeId}>
+              <CardHeader className="pb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <CardTitle className="text-label font-semibold">{recipe.recipeName}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-muted text-muted-foreground">
+                      {recipe.rawPatientCount} patients requested
+                    </Badge>
+                    <Badge className="bg-primary/20 text-primary">
+                      Weighted count: {recipe.weightedCount}
+                    </Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">#</TableHead>
+                      <TableHead>Ingredient (EN)</TableHead>
+                      <TableHead className="hidden md:table-cell">Ingredient (SI)</TableHead>
+                      <TableHead className="text-right">Norm / Patient</TableHead>
+                      <TableHead className="text-right font-bold">Total Quantity</TableHead>
+                      <TableHead>Unit</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(recipe.ingredients || []).map((ing, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell className="font-medium">{ing.nameEn}</TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">{ing.nameSi}</TableCell>
+                        <TableCell className="text-right">{ing.normPerPatient}</TableCell>
+                        <TableCell className="text-right font-bold text-primary">{ing.qty}</TableCell>
+                        <TableCell className="text-muted-foreground">{ing.unit}</TableCell>
+                      </TableRow>
+                    ))}
+                    {(recipe.ingredients || []).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
+                          No ingredients configured for this recipe
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Sticky bottom bar with Generate PO button */}
       {grandTotal > 0 && (
