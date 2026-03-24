@@ -19,6 +19,7 @@ const API_BASE = "http://localhost:5050/api/census";
 const WARDS_API = "http://localhost:5050/api/wards";
 const ITEMS_API = "http://localhost:5050/api/items";
 const DIET_TYPES_API = "http://localhost:5050/api/diet-types";
+const RECIPES_API = "http://localhost:5050/api/recipes";
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");
@@ -69,12 +70,13 @@ const CensusEntryPage = () => {
   const [wardStatuses, setWardStatuses] = useState([]);
   const [extraItemsMaster, setExtraItemsMaster] = useState([]);
   const [dietTypes, setDietTypes] = useState([]);
+  const [recipesMaster, setRecipesMaster] = useState([]);
 
   const [wardId, setWardId] = useState("");
   const [wardSearchOpen, setWardSearchOpen] = useState(false);
 
   const [diets, setDiets] = useState({});
-  const [special, setSpecial] = useState({ soup: "", kanda: "", polSambola: "" });
+  const [special, setSpecial] = useState({});
   const [extras, setExtras] = useState({});
   const [customExtras, setCustomExtras] = useState([]);
 
@@ -170,6 +172,13 @@ const CensusEntryPage = () => {
     return (data.items || []).filter((item) => item.isExtra).map((item) => ({ id: item.id, name: item.nameEn, unit: item.unit }));
   };
 
+  const fetchRecipes = async () => {
+    const res = await fetch(RECIPES_API, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to fetch recipes");
+    return (data.recipes || []).map((r) => ({ id: r.id, key: r.recipeKey, name: r.name }));
+  };
+
   const fetchStaffMeals = async () => {
     const res = await fetch(`${API_BASE}/staff?date=${today}`, { headers: getAuthHeaders() });
     const data = await res.json();
@@ -192,16 +201,22 @@ const CensusEntryPage = () => {
     const loadInitial = async () => {
       try {
         setLoading(true);
-        const [wardsData, statusesData, itemsData, dietTypesData] = await Promise.all([
-          fetchWards(), fetchStatuses(), fetchExtraItems(), fetchDietTypes(),
+        const [wardsData, statusesData, itemsData, dietTypesData, recipesData] = await Promise.all([
+          fetchWards(), fetchStatuses(), fetchExtraItems(), fetchDietTypes(), fetchRecipes(),
         ]);
 
         setWards(wardsData);
         setExtraItemsMaster(itemsData);
         setDietTypes(dietTypesData);
+        setRecipesMaster(recipesData);
         setExtras(initExtrasObject(itemsData));
         setDiets(buildEmptyDiets(dietTypesData));
         setWardStatuses(normalizeWardStatuses(statusesData, wardsData));
+
+        // Build empty special object from recipes
+        const emptySpecial = {};
+        for (const r of recipesData) { emptySpecial[r.key] = ""; }
+        setSpecial(emptySpecial);
 
         await fetchStaffMeals();
       } catch (error) {
@@ -227,11 +242,14 @@ const CensusEntryPage = () => {
         if (data.census) {
           const normalizedDiets = Object.fromEntries(Object.entries(data.census.diets || {}).map(([k, v]) => [String(k), String(v ?? "")]));
           setDiets({ ...buildEmptyDiets(dietTypes), ...normalizedDiets });
-          setSpecial({
-            soup: String(data.census.special?.soup ?? ""),
-            kanda: String(data.census.special?.kanda ?? ""),
-            polSambola: String(data.census.special?.polSambola ?? ""),
-          });
+
+          // Dynamic special from recipes
+          const loadedSpecial = {};
+          for (const r of recipesMaster) {
+            loadedSpecial[r.key] = String(data.census.special?.[r.key] ?? "");
+          }
+          setSpecial(loadedSpecial);
+
           setExtras({
             ...initExtrasObject(extraItemsMaster),
             ...Object.fromEntries(Object.entries(data.census.extras || {}).map(([k, v]) => [k, String(v ?? "")])),
@@ -240,7 +258,12 @@ const CensusEntryPage = () => {
           setStatus(data.census.status || "not_started");
         } else {
           setDiets(buildEmptyDiets(dietTypes));
-          setSpecial({ soup: "", kanda: "", polSambola: "" });
+
+          // Empty special from recipes
+          const emptySpec = {};
+          for (const r of recipesMaster) { emptySpec[r.key] = ""; }
+          setSpecial(emptySpec);
+
           setExtras(initExtrasObject(extraItemsMaster));
           setCustomExtras([]);
           setStatus("not_started");
@@ -249,7 +272,7 @@ const CensusEntryPage = () => {
         toast({ title: "Error", description: error.message || "Failed to load ward data", variant: "destructive" });
       }
     },
-    [buildEmptyDiets, dietTypes, extraItemsMaster, initExtrasObject, toast]
+    [buildEmptyDiets, dietTypes, extraItemsMaster, recipesMaster, initExtrasObject, toast]
   );
 
   const saveDraft = async () => {
@@ -496,11 +519,11 @@ const CensusEntryPage = () => {
                 <CardHeader className="pb-2"><CardTitle className="text-heading-sm">Special Requests</CardTitle></CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4">
-                    {[{ key: "soup", label: "Soup" }, { key: "kanda", label: "Kanda" }, { key: "polSambola", label: "Pol Sambola" }].map((item) => {
+                    {recipesMaster.map((item) => {
                       const idx = refIdx++;
                       return (
                         <div key={item.key} className="space-y-1.5">
-                          <Label className="text-label font-semibold">{item.label}</Label>
+                          <Label className="text-label font-semibold">{item.name}</Label>
                           <NumField
                             disabled={isReadOnly}
                             value={special[item.key] ?? ""}

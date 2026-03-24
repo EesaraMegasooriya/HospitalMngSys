@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Utensils } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const API_BASE = "http://localhost:5050/api/census";
@@ -39,23 +39,27 @@ const CensusSubmissions = () => {
   const [filterDate, setFilterDate] = useState(today);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [submissions, setSubmissions] = useState([]);
+  const [staffMeals, setStaffMeals] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dietTypes, setDietTypes] = useState([]);
+  const [recipes, setRecipes] = useState([]);
 
   const fetchSubmissions = async (date) => {
     try {
       setLoading(true);
 
-      const res = await fetch(`${API_BASE}/my-submissions?date=${date}`, {
-        headers: getAuthHeaders(),
-      });
+      const [submissionsRes, staffRes] = await Promise.all([
+        fetch(`${API_BASE}/my-submissions?date=${date}`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/staff?date=${date}`, { headers: getAuthHeaders() }),
+      ]);
 
-      const data = await res.json();
+      const submissionsData = await submissionsRes.json();
+      const staffData = await staffRes.json();
 
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to fetch submissions");
-      }
+      if (!submissionsRes.ok) throw new Error(submissionsData.message || "Failed to fetch submissions");
 
-      setSubmissions(data.submissions || []);
+      setSubmissions(submissionsData.submissions || []);
+      setStaffMeals(staffData.staffMeals || null);
     } catch (error) {
       toast({
         title: "Error",
@@ -69,9 +73,42 @@ const CensusSubmissions = () => {
 
   useEffect(() => {
     fetchSubmissions(filterDate);
+
+    // Fetch diet types for display names
+    fetch("http://localhost:5050/api/diet-types", { headers: getAuthHeaders() })
+      .then((res) => res.json())
+      .then((data) => setDietTypes(data.dietTypes || []))
+      .catch(() => {});
+
+    // Fetch recipes for special request display names
+    fetch("http://localhost:5050/api/recipes", { headers: getAuthHeaders() })
+      .then((res) => res.json())
+      .then((data) => setRecipes(data.recipes || []))
+      .catch(() => {});
   }, [filterDate]);
 
+  // Get diet type display label: "Normal (NOR)" instead of just "NOR"
+  const getDietLabel = (code) => {
+    const dt = dietTypes.find(
+      (d) => String(d.code) === String(code) || String(d.id) === String(code)
+    );
+    return dt ? `${dt.nameEn} (${dt.code})` : code;
+  };
+
+  // Get recipe display name: "Pol Sambola" instead of "polSambola"
+  const getSpecialLabel = (key) => {
+    const recipe = recipes.find(
+      (r) => r.recipeKey === key || r.recipeKey?.toLowerCase() === key?.toLowerCase()
+    );
+    if (recipe) return recipe.name;
+    return key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
+  };
+
   const visibleSubmissions = useMemo(() => submissions || [], [submissions]);
+
+  const staffTotal = staffMeals
+    ? (staffMeals.breakfast || 0) + (staffMeals.lunch || 0) + (staffMeals.dinner || 0)
+    : 0;
 
   return (
     <div className="space-y-4">
@@ -89,7 +126,62 @@ const CensusSubmissions = () => {
         </div>
       </div>
 
+      {/* Staff Meals Card */}
       <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-label font-semibold flex items-center gap-2">
+            <Utensils className="h-4 w-4 text-primary" />
+            Staff Meals
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {staffMeals ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Breakfast</p>
+                  <p className="text-xl font-bold text-foreground">{staffMeals.breakfast || 0}</p>
+                </div>
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Lunch</p>
+                  <p className="text-xl font-bold text-foreground">{staffMeals.lunch || 0}</p>
+                </div>
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Dinner</p>
+                  <p className="text-xl font-bold text-foreground">{staffMeals.dinner || 0}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t">
+                <span className="text-sm text-muted-foreground">Total Staff Meals</span>
+                <span className="text-lg font-bold text-primary">{staffTotal}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className={statusConfig[staffMeals.status]?.className || "bg-muted text-muted-foreground"}>
+                  {statusConfig[staffMeals.status]?.label || staffMeals.status}
+                </Badge>
+
+                {/*  comment out cycle name */}
+                
+                {/* {staffMeals.staffCycle && (
+                  <Badge className="bg-badge-hospital text-primary-foreground">
+                    Cycle: {staffMeals.staffCycle}
+                  </Badge>
+                )} */}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No staff meals submitted for this date.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Ward Submissions Table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-label font-semibold">Ward Submissions</CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -119,7 +211,7 @@ const CensusSubmissions = () => {
               {!loading && visibleSubmissions.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
-                    No submissions found for this date.
+                    No ward submissions found for this date.
                   </TableCell>
                 </TableRow>
               )}
@@ -160,6 +252,7 @@ const CensusSubmissions = () => {
         </CardContent>
       </Card>
 
+      {/* Ward Detail Dialog */}
       <Dialog open={!!selectedEntry} onOpenChange={() => setSelectedEntry(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           {selectedEntry && (
@@ -183,12 +276,13 @@ const CensusSubmissions = () => {
               </DialogHeader>
 
               <div className="space-y-4 mt-2">
+                {/* Patient Diets */}
                 <div>
                   <h4 className="text-label font-semibold mb-2">Patient Diets</h4>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-1">
                     {Object.entries(selectedEntry.diets || {}).map(([key, value]) => (
                       <div key={key} className="flex justify-between text-body py-1">
-                        <span className="text-muted-foreground">{key}</span>
+                        <span className="text-muted-foreground">{getDietLabel(key)}</span>
                         <span className="font-medium">{value || 0}</span>
                       </div>
                     ))}
@@ -200,19 +294,25 @@ const CensusSubmissions = () => {
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="text-label font-semibold mb-2">Special Requests</h4>
-                  <div className="space-y-1">
-                    {Object.entries(selectedEntry.special || {}).map(([key, value]) => (
-                      <div key={key} className="flex justify-between text-body">
-                        <span className="text-muted-foreground">{key}</span>
-                        <span className="font-medium">{value || 0}</span>
-                      </div>
-                    ))}
+                {/* Special Requests */}
+                {Object.values(selectedEntry.special || {}).some((v) => Number(v) > 0) && (
+                  <div>
+                    <h4 className="text-label font-semibold mb-2">Special Requests</h4>
+                    <div className="space-y-1">
+                      {Object.entries(selectedEntry.special || {})
+                        .filter(([, v]) => Number(v) > 0)
+                        .map(([key, value]) => (
+                          <div key={key} className="flex justify-between text-body">
+                            <span className="text-muted-foreground">{getSpecialLabel(key)}</span>
+                            <span className="font-medium">{value}</span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {Object.keys(selectedEntry.extras || {}).length > 0 && (
+                {/* Extra Items */}
+                {Object.values(selectedEntry.extras || {}).some((v) => Number(v) > 0) && (
                   <div>
                     <h4 className="text-label font-semibold mb-2">Extra Items</h4>
                     <div className="space-y-1">
@@ -228,6 +328,7 @@ const CensusSubmissions = () => {
                   </div>
                 )}
 
+                {/* Custom Extra Items */}
                 {selectedEntry.customExtras?.length > 0 && (
                   <div>
                     <h4 className="text-label font-semibold mb-2">Custom Extra Items</h4>
