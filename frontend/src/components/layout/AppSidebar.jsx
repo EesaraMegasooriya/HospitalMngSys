@@ -23,11 +23,9 @@ const AppSidebar = () => {
 
   if (!user) return null;
 
-  const navItems = Object.values(NAV_ITEMS).flat();
+  const role = user.role?.toUpperCase();
 
-  const uniqueNavItems = navItems.filter(
-    (item, index, self) => index === self.findIndex((x) => x.url === item.url)
-  );
+  const navItems = NAV_ITEMS[role] || [];
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -58,8 +56,10 @@ const AppSidebar = () => {
 
           <SidebarGroupContent>
             <SidebarMenu>
-              {uniqueNavItems.map((item) => {
-                const isActive = location.pathname === item.url;
+              {navItems.map((item) => {
+                const isActive =
+                  location.pathname === item.url ||
+                  location.pathname.startsWith(item.url + "/");
 
                 return (
                   <SidebarMenuItem key={item.url}>
@@ -75,7 +75,9 @@ const AppSidebar = () => {
                     >
                       <Link to={item.url} className="touch-target">
                         <item.icon className="h-5 w-5 shrink-0" />
-                        {!collapsed && <span className="text-sm">{item.title}</span>}
+                        {!collapsed && (
+                          <span className="text-sm">{item.title}</span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
