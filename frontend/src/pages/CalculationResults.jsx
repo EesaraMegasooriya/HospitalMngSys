@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Loader2, FileText } from "lucide-react";
+import { getTodaySL } from "@/lib/date-utils";
 
 const API_BASE = "http://localhost:5050/api";
 
@@ -21,7 +22,7 @@ const getAuthHeaders = () => {
   };
 };
 
-const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
+const today = getTodaySL();
 
 const CalculationResults = () => {
   const { toast } = useToast();

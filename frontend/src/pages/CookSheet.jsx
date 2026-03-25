@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronDown, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { getTodaySL } from "@/lib/date-utils";
 
 const API_BASE = "http://localhost:5050/api";
 
@@ -16,7 +17,7 @@ const getAuthHeaders = () => {
   };
 };
 
-const today = new Date().toISOString().split("T")[0];
+const today = getTodaySL();
 
 const StatBox = ({ label, value, size = "lg" }) => (
   <div className="bg-card rounded-xl border-2 border-border p-4 text-center">

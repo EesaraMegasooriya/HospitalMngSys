@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, Clock, Square, Calculator, Loader2, Leaf, Drumstick } from "lucide-react";
+import { getTodaySL } from "@/lib/date-utils";
 
 const API_BASE = "http://localhost:5050/api";
 
@@ -18,9 +19,8 @@ const getAuthHeaders = () => {
   };
 };
 
-const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
+const today = getTodaySL();
 const Calculations = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   const [isCalculating, setIsCalculating] = useState(false);

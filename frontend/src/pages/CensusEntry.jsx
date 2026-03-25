@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, ChevronsUpDown, HelpCircle, Plus, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getTodaySL } from "@/lib/date-utils";
 
 const API_BASE = "http://localhost:5050/api/census";
 const WARDS_API = "http://localhost:5050/api/wards";
@@ -26,7 +27,7 @@ const getAuthHeaders = () => {
   return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 };
 
-const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
+const today = getTodaySL();
 
 const statusConfig = {
   not_started: { label: "Not Submitted", className: "bg-muted text-muted-foreground" },
