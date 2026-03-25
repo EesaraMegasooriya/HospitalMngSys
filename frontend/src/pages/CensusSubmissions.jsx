@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { CalendarDays, Utensils } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getTodaySL } from "@/lib/date-utils";
 
 const API_BASE = "http://localhost:5050/api/census";
 
@@ -35,7 +36,7 @@ const statusConfig = {
 const CensusSubmissions = () => {
   const { toast } = useToast();
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodaySL();
   const [filterDate, setFilterDate] = useState(today);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [submissions, setSubmissions] = useState([]);
