@@ -58,7 +58,7 @@ const NumField = ({ value, onChange, onEnter, inputRef, className = "", disabled
         if (/^\d*$/.test(raw)) onChange(raw);
       }}
       onKeyDown={handleKeyDown}
-      className={`h-11 text-input text-center w-24 touch-target ${className}`}
+      className={`h-11 text-input text-center text-black w-24 touch-target ${className}`}
     />
   );
 };
@@ -403,7 +403,7 @@ const CensusEntryPage = () => {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full">
+        <TabsList className="flex gap gap-10">
           <TabsTrigger value="patients" className="flex-1 touch-target">Patient Census</TabsTrigger>
           <TabsTrigger value="staff" className="flex-1 touch-target">Staff Meals</TabsTrigger>
         </TabsList>
@@ -416,7 +416,7 @@ const CensusEntryPage = () => {
                   <Label className="text-label font-semibold">Select Ward</Label>
                   <Popover open={wardSearchOpen} onOpenChange={setWardSearchOpen}>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" role="combobox" aria-expanded={wardSearchOpen} className="w-full justify-between h-12 text-input touch-target">
+                      <Button variant="outline" role="combobox" aria-expanded={wardSearchOpen} className="w-full justify-between h-12 text-input touch-target text-black">
                         {ward ? `${ward.name} (${ward.code})` : "Search or select a ward…"}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
@@ -477,7 +477,7 @@ const CensusEntryPage = () => {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 ">
                     {dietTypes.map((diet) => {
                       const idx = refIdx++;
                       const dietKey = getDietKey(diet);
@@ -493,6 +493,7 @@ const CensusEntryPage = () => {
                             )}
                           </div>
                           <NumField
+                          className="text-primary"
                             disabled={isReadOnly}
                             value={diets[dietKey] ?? ""}
                             onChange={(v) => !isReadOnly && setDiets((prev) => ({ ...prev, [dietKey]: v }))}
@@ -526,6 +527,7 @@ const CensusEntryPage = () => {
                         <div key={item.key} className="space-y-1.5">
                           <Label className="text-label font-semibold">{item.name}</Label>
                           <NumField
+                          className="text-primary"
                             disabled={isReadOnly}
                             value={special[item.key] ?? ""}
                             onChange={(v) => !isReadOnly && setSpecial((s) => ({ ...s, [item.key]: v }))}
@@ -561,12 +563,13 @@ const CensusEntryPage = () => {
                             <div key={item.id} className="grid grid-cols-[1fr_100px_60px] gap-2 px-4 py-2 border-t items-center">
                               <span className="text-body">{item.name}</span>
                               <NumField
+                              
                                 disabled={isReadOnly}
                                 value={extras[item.name] ?? ""}
                                 onChange={(v) => !isReadOnly && setExtras((e) => ({ ...e, [item.name]: v }))}
                                 onEnter={() => focusNext(idx)}
                                 inputRef={registerRef(idx)}
-                                className="w-full"
+                                className="w-full text-primary"
                               />
                               <span className="text-label text-muted-foreground text-center">{item.unit}</span>
                             </div>
@@ -579,7 +582,7 @@ const CensusEntryPage = () => {
                               disabled={isReadOnly}
                               value={item.quantity ?? ""}
                               onChange={(v) => !isReadOnly && setCustomExtras((prev) => prev.map((ce, j) => j === i ? { ...ce, quantity: v } : ce))}
-                              className="w-full"
+                              className="w-full text-primary"
                             />
                             <span className="text-label text-muted-foreground text-center">{item.unit}</span>
                           </div>
@@ -685,24 +688,24 @@ const CensusEntryPage = () => {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-label font-semibold">Item Name</Label>
-              <Input value={newItem.name} onChange={(e) => setNewItem((n) => ({ ...n, name: e.target.value }))} className="h-11 text-input" placeholder="Enter item name" />
+              <Input value={newItem.name} onChange={(e) => setNewItem((n) => ({ ...n, name: e.target.value }))} className="h-11 text-input text-primary" placeholder="Enter item name" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-label font-semibold">Quantity</Label>
-                <NumField value={newItem.quantity ?? ""} onChange={(v) => setNewItem((n) => ({ ...n, quantity: v }))} className="w-full" />
+                <NumField value={newItem.quantity ?? ""} onChange={(v) => setNewItem((n) => ({ ...n, quantity: v }))} className="w-full text-primary" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-label font-semibold">Unit</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="h-11 w-full justify-between text-input">
-                      {newItem.unit} <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                    <Button variant="outline" className="h-11 w-full justify-between text-input text-black">
+                      {newItem.unit} <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 " />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-32 p-1">
                     {["Pcs", "g", "kg", "ml", "L", "Fruit"].map((u) => (
-                      <Button key={u} variant="ghost" size="sm" className="w-full justify-start" onClick={() => setNewItem((n) => ({ ...n, unit: u }))}>{u}</Button>
+                      <Button key={u} variant="ghost" size="sm" className="w-full justify-start text-black" onClick={() => setNewItem((n) => ({ ...n, unit: u }))}>{u}</Button>
                     ))}
                   </PopoverContent>
                 </Popover>
