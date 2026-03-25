@@ -56,43 +56,47 @@ export const NAV_ITEMS = {
   DIET_CLERK: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Census Entry", url: "/census", icon: ClipboardList },
-    { title: "My Submissions", url: "/census/submissions", icon: FileText },
+    { title: "Census Submissions", url: "/census/submissions", icon: FileText },
   ],
+
   SUBJECT_CLERK: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Calculations", url: "/calculations", icon: Calculator },
-    { title: "Purchase Orders", url: "/orders", icon: ShoppingCart },
+    { title: "Calculation Results", url: "/calculations/results", icon: FileText },
+    { title: "Orders", url: "/orders", icon: ShoppingCart },
+    { title: "Order Details", url: "/orders/details", icon: FileText },
   ],
+
   ACCOUNTANT: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Pending Approvals", url: "/approvals", icon: CheckSquare },
+    { title: "Account Price Management", url: "/accountant/prices", icon: DollarSign },
+    { title: "Approvals", url: "/approvals", icon: CheckSquare },
+    { title: "Approval Details", url: "/approvals/details", icon: FileText },
     { title: "Invoices", url: "/invoices", icon: Receipt },
-    { title: "Price Management", url: "/accountant/prices", icon: DollarSign },
-    { title: "Financial Reports", url: "/reports", icon: BarChart3 },
+    { title: "Invoice Details", url: "/invoices/details", icon: FileText },
   ],
+
+  SYSTEM_ADMIN: [
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    { title: "System Users", url: "/system/users", icon: Users },
+  ],
+
+  HOSPITAL_ADMIN: [
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    { title: "Admin Daily Cycle", url: "/admin/daily-cycle", icon: CalendarDays },
+    { title: "Admin Diet Cycle", url: "/admin/diet-cycle", icon: ListTree },
+    { title: "Admin Diet Type", url: "/admin/diet-types", icon: Utensils },
+    { title: "Admin Items", url: "/admin/items", icon: Package },
+    { title: "Admin Notification", url: "/admin/notifications", icon: Bell },
+    { title: "Admin Recipes", url: "/admin/recipes", icon: BookOpen },
+    { title: "Admin Wards", url: "/admin/wards", icon: Building2 },
+  ],
+
   KITCHEN: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Cook Sheet", url: "/kitchen", icon: ChefHat },
     { title: "Delivery Receiving", url: "/kitchen/receiving", icon: Truck },
     { title: "Issue Reports", url: "/kitchen/reports", icon: AlertTriangle },
-  ],
-  HOSPITAL_ADMIN: [
-    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Daily Meal Cycle", url: "/admin/daily-cycle", icon: CalendarDays },
-    { title: "Wards", url: "/admin/wards", icon: Building2 },
-    { title: "Diet Types", url: "/admin/diet-types", icon: Utensils },
-    { title: "Norm Weights", url: "/admin/norm-weights", icon: Scale },
-    { title: "Items", url: "/admin/items", icon: Package },
-    { title: "Diet Cycles", url: "/admin/diet-cycles", icon: ListTree },
-    { title: "Recipes", url: "/admin/recipes", icon: BookOpen },
-    { title: "Notifications", url: "/admin/notifications", icon: Bell },
-  ],
-  SYSTEM_ADMIN: [
-    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Users", url: "/system/users", icon: Users },
-    { title: "Audit Logs", url: "/system/audit", icon: History },
-    { title: "Backups", url: "/system/backups", icon: Database },
-    { title: "Settings", url: "/system/settings", icon: Settings },
   ],
 };
 
