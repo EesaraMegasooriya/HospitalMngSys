@@ -1,4 +1,11 @@
-const { Pool } = require("pg");
+const { Pool, types } = require("pg"); 
+
+require("dotenv").config();
+
+
+types.setTypeParser(1082, function(stringValue) {
+  return stringValue; // Returns exactly '2026-03-25'
+});
 
 const pool = new Pool({
   host: process.env.DB_HOST,

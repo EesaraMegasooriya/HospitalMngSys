@@ -124,19 +124,19 @@ const CalculationResults = () => {
   };
 
   // ─── Selection helpers ───
-  const toggleItemSelection = (itemId, quantity, unit) => {
+  const toggleItemSelection = (item, defaultQty) => {
     setSelections((prev) => {
-      const existing = prev[itemId];
+      const existing = prev[item.id];
       if (existing?.selected) {
         // Deselect
         const next = { ...prev };
-        delete next[itemId];
+        delete next[item.id];
         return next;
       }
-      // Select with the calculated quantity
+      // Select and default to the item's calculated grand total (if any), otherwise 0
       return {
         ...prev,
-        [itemId]: { selected: true, quantity: quantity || 0, unit: unit || "Kg", customPrice: null },
+        [item.id]: { selected: true, quantity: defaultQty || 0, unit: item.unit || "Kg", customPrice: null },
       };
     });
   };
@@ -146,30 +146,6 @@ const CalculationResults = () => {
       ...prev,
       [itemId]: { ...prev[itemId], quantity: parseFloat(quantity) || 0 },
     }));
-  };
-
-  // Get required total for a category (MAX of calculated items)
-  const getCategoryTotal = (catId) => {
-    const items = tabs[catId] || [];
-    if (items.length === 0) return 0;
-    return Math.round(Math.max(...items.map((item) => item.grandTotal || 0)) * 100) / 100;
-  };
-
-  const getCategoryUnit = (catId) => {
-    const items = tabs[catId] || [];
-    return items.length > 0 ? items[0].unit || "Kg" : "Kg";
-  };
-
-  // Get total selected quantity for a category
-  const getSelectedTotal = (catId) => {
-    const catItems = allItemsByCategory[catId] || [];
-    let total = 0;
-    for (const item of catItems) {
-      if (selections[item.id]?.selected) {
-        total += selections[item.id].quantity || 0;
-      }
-    }
-    return Math.round(total * 100) / 100;
   };
 
   // ─── Render: Calculated totals table (read-only reference) ───
@@ -227,34 +203,23 @@ const CalculationResults = () => {
 
   // ─── Render: Item selection table with checkboxes ───
   const renderSelectionTable = (catId, catName) => {
-    const requiredTotal = getCategoryTotal(catId);
-    const unit = getCategoryUnit(catId);
     const options = allItemsByCategory[catId] || [];
-    const selectedTotal = getSelectedTotal(catId);
     const selectedCount = options.filter((o) => selections[o.id]?.selected).length;
 
-    if (requiredTotal === 0 && options.length === 0) return null;
+    if (options.length === 0) return null;
 
     return (
       <Card className="mt-4 border-primary/20">
         <CardHeader className="pb-2">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center justify-between">
             <CardTitle className="text-label font-semibold">
               Select Items to Order — {catName}
             </CardTitle>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">
-                Required: <span className="font-bold text-foreground">{requiredTotal} {unit}</span>
+            {selectedCount > 0 && (
+              <span className="text-xs font-semibold text-primary">
+                {selectedCount} item{selectedCount > 1 ? "s" : ""} selected
               </span>
-              <span className={`text-xs font-semibold ${
-                selectedTotal > requiredTotal ? "text-destructive" :
-                selectedTotal > 0 && Math.abs(selectedTotal - requiredTotal) < 0.01 ? "text-primary" :
-                selectedTotal > 0 ? "text-warning" : "text-muted-foreground"
-              }`}>
-                Selected: {selectedTotal} {unit}
-                {selectedCount > 0 && ` (${selectedCount} item${selectedCount > 1 ? "s" : ""})`}
-              </span>
-            </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="pt-0">
@@ -276,15 +241,19 @@ const CalculationResults = () => {
                 const qty = selections[item.id]?.quantity || 0;
                 const totalPrice = Math.round(qty * item.defaultPrice * 100) / 100;
 
+                // Find if this item has a calculated grand total from the engine today
+                const calculatedItem = (tabs[catId] || []).find((t) => String(t.id) === String(item.id));
+                const suggestedQty = calculatedItem ? calculatedItem.grandTotal : 0;
+
                 return (
                   <TableRow
                     key={item.id}
-                    className={isSelected ? "bg-primary/5 border-l-2 border-l-primary" : "opacity-70"}
+                    className={isSelected ? "bg-primary/5 border-l-2 border-l-primary" : "opacity-80"}
                   >
                     <TableCell>
                       <Checkbox
                         checked={isSelected}
-                        onCheckedChange={() => toggleItemSelection(item.id, requiredTotal, item.unit)}
+                        onCheckedChange={() => toggleItemSelection(item, suggestedQty)}
                       />
                     </TableCell>
                     <TableCell className={`font-medium ${isSelected ? "" : "text-muted-foreground"}`}>
@@ -322,14 +291,11 @@ const CalculationResults = () => {
                 );
               })}
 
-              {/* Category subtotal row */}
+              {/* Category subtotal row (Financials Only) */}
               {selectedCount > 0 && (
                 <TableRow className="bg-primary/10 font-bold">
-                  <TableCell colSpan={5} className="text-right text-primary">
-                    Category Subtotal
-                  </TableCell>
-                  <TableCell className="text-right text-primary">
-                    {selectedTotal} {unit}
+                  <TableCell colSpan={6} className="text-right text-primary">
+                    Category Price Subtotal
                   </TableCell>
                   <TableCell className="text-right text-primary">
                     Rs. {Math.round(
@@ -338,14 +304,6 @@ const CalculationResults = () => {
                         .reduce((sum, o) => sum + (selections[o.id]?.quantity || 0) * o.defaultPrice, 0)
                       * 100
                     ) / 100}
-                  </TableCell>
-                </TableRow>
-              )}
-
-              {options.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-4">
-                    No items available in this category
                   </TableCell>
                 </TableRow>
               )}
@@ -505,7 +463,7 @@ const CalculationResults = () => {
 
       {/* Sticky bottom bar with Generate PO button */}
       {grandTotal > 0 && (
-        <div className="sticky bottom-0 bg-background border-t py-4 -mx-4 px-4 md:-mx-6 md:px-6 flex items-center justify-between">
+        <div className="sticky bottom-0 z-10 bg-background border-t py-4 -mx-4 px-4 md:-mx-6 md:px-6 flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">
               {Object.values(selections).filter((s) => s.selected).length} items selected across all categories
@@ -516,7 +474,7 @@ const CalculationResults = () => {
           </div>
           <Button
             size="lg"
-            className="h-12 px-8"
+            className="h-12 px-8 touch-target"
             disabled={generatingPO}
             onClick={async () => {
               setGeneratingPO(true);
