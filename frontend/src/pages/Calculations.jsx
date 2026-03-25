@@ -18,14 +18,14 @@ const getAuthHeaders = () => {
   };
 };
 
-const today = new Date().toISOString().split("T")[0];
-
+const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
 const Calculations = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [isCalculating, setIsCalculating] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasExistingCalc, setHasExistingCalc] = useState(false);
 
   // Real data from API
   const [wards, setWards] = useState([]);
@@ -47,6 +47,12 @@ const Calculations = () => {
           fetch(`${API_BASE}/daily-cycle?date=${today}`, { headers: getAuthHeaders() }),
           fetch(`${API_BASE}/diet-types`, { headers: getAuthHeaders() }),
         ]);
+
+        // Check if calculation results already exist for today
+        try {
+          const calcCheckRes = await fetch(`${API_BASE}/calculations/results?date=${today}`, { headers: getAuthHeaders() });
+          setHasExistingCalc(calcCheckRes.ok);
+        } catch { setHasExistingCalc(false); }
 
         const wardsData = await wardsRes.json();
         const statusesData = await statusesRes.json();
@@ -337,19 +343,23 @@ const Calculations = () => {
       )}
 
       {/* Run Calculation */}
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center gap-3">
         <Tooltip>
           <TooltipTrigger asChild>
             <span>
               <Button
                 size="lg"
                 className="h-14 px-10 text-body font-semibold touch-target"
-                disabled={!allSubmitted || isCalculating}
+                disabled={(!allSubmitted && !hasExistingCalc) || isCalculating}
                 onClick={handleRunCalc}
               >
                 {isCalculating ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Calculating...
+                  </>
+                ) : hasExistingCalc ? (
+                  <>
+                    <Calculator className="mr-2 h-5 w-5" /> Re-run Calculation
                   </>
                 ) : (
                   <>
@@ -359,12 +369,28 @@ const Calculations = () => {
               </Button>
             </span>
           </TooltipTrigger>
-          {!allSubmitted && (
+          {!allSubmitted && !hasExistingCalc && (
             <TooltipContent>
               All wards must be submitted before running calculation
             </TooltipContent>
           )}
+          {!allSubmitted && hasExistingCalc && (
+            <TooltipContent>
+              Not all wards submitted — re-running will use current submissions
+            </TooltipContent>
+          )}
         </Tooltip>
+
+        {hasExistingCalc && (
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-12 px-8"
+            onClick={() => navigate("/calculations/results")}
+          >
+            View Existing Results
+          </Button>
+        )}
       </div>
     </div>
   );

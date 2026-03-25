@@ -26,7 +26,7 @@ const getAuthHeaders = () => {
   return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 };
 
-const today = new Date().toISOString().split("T")[0];
+const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
 
 const statusConfig = {
   not_started: { label: "Not Submitted", className: "bg-muted text-muted-foreground" },
