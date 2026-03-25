@@ -2,9 +2,9 @@ const censusModel = require("../models/censusModel");
 const { writeAudit } = require("../utils/audit");
 
 // Helper to get today's date in Sri Lanka timezone (YYYY-MM-DD)
-// const getTodaySL = () => {
-//   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
-// };
+const getTodaySL = () => {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
+};
 
 exports.getWardCensus = async (req, res) => {
   try {
@@ -41,11 +41,11 @@ exports.saveWardCensusDraft = async (req, res) => {
     const { wardId, date, diets = {}, special = {}, extras = {}, customExtras = [] } = req.body;
 
     if (!wardId || !date) return res.status(400).json({ message: "wardId and date are required" });
-    //  console.log("DEBUG DRAFT DATE:", { frontendDate: date, serverToday: getTodaySL() });
+
     // Security: Only allow edits for the current day
-    // if (date !== getTodaySL()) {
-    //   return res.status(403).json({ message: "You can only edit records for the current day." });
-    // }
+    if (date !== getTodaySL()) {
+      return res.status(403).json({ message: "You can only edit records for the current day." });
+    }
 
     // Security: Prevent editing if locked
     const existing = await censusModel.getWardCensusByDate(wardId, date);
@@ -77,11 +77,10 @@ exports.submitWardCensus = async (req, res) => {
 
     if (!wardId || !date) return res.status(400).json({ message: "wardId and date are required" });
     
-    // console.log("DEBUG DATE:", { frontendDate: date, serverToday: getTodaySL() });
     // Security: Only allow edits for the current day
-    // if (date !== getTodaySL()) {
-    //   return res.status(403).json({ message: "You can only edit records for the current day." });
-    // }
+    if (date !== getTodaySL()) {
+      return res.status(403).json({ message: "You can only edit records for the current day." });
+    }
 
     // Security: Prevent editing if locked
     const existing = await censusModel.getWardCensusByDate(wardId, date);
@@ -128,9 +127,9 @@ exports.submitStaffMeals = async (req, res) => {
     if (!date) return res.status(400).json({ message: "date is required" });
 
     // Security: Only allow edits for the current day
-    // if (date !== getTodaySL()) {
-    //   return res.status(403).json({ message: "You can only edit records for the current day." });
-    // }
+    if (date !== getTodaySL()) {
+      return res.status(403).json({ message: "You can only edit records for the current day." });
+    }
 
     // Security: Prevent editing if locked
     const existing = await censusModel.getStaffMealsByDate(date);

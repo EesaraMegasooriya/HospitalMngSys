@@ -1,11 +1,15 @@
 const dailyCycleModel = require("../models/dailyCycleModel");
 const { writeAudit } = require("../utils/audit");
 
+// Helper to get today's date in Sri Lanka timezone (YYYY-MM-DD)
+const getTodaySL = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
+
 // GET /api/daily-cycle?date=YYYY-MM-DD
 exports.getDailyCycle = async (req, res) => {
   try {
     // Default to today if no date is provided
-    const requestedDate = req.query.date || new Date().toISOString().split("T")[0];
+    const requestedDate = req.query.date || getTodaySL();
     
     const cycle = await dailyCycleModel.getCycleForDate(requestedDate);
 
