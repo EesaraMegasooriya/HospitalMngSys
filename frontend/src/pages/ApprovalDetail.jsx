@@ -297,7 +297,7 @@ const ApprovalDetail = () => {
           </DialogHeader>
           <p className="text-body text-muted-foreground">
             You are approving PO #{po.billNumber} for Rs. {Math.round(revisedTotal).toLocaleString()}.
-            This action is legally timestamped to your User ID. Continue?
+            This action is timestamped to your User ID. Continue?
           </p>
           {diff !== 0 && (
             <p className={`text-sm font-medium ${diff < 0 ? "text-primary" : "text-destructive"}`}>
