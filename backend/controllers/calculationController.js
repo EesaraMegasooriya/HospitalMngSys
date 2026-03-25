@@ -274,3 +274,39 @@ function buildProteinAllocation(lineItems) {
     staff: Math.round(a.staff * 100) / 100,
   }));
 }
+
+
+exports.getCookSheet = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ message: "date is required" });
+
+    const results = await calculationModel.getCalculationResults(date);
+    if (!results) return res.status(404).json({ message: "No calculation results found for this date" });
+
+    const cookSheet = {
+      date: results.run.date,
+      patientCycle: results.run.patientCycle,
+      staffCycle: results.run.staffCycle,
+      patientTotals: results.run.patientTotals, // <-- This brings the counts back!
+      staff: {
+        breakfast: results.run.staffBreakfast,
+        lunch: results.run.staffLunch,
+        dinner: results.run.staffDinner,
+      },
+      dietInstructions: buildDietInstructions(results.lineItems),
+      proteinAllocation: buildProteinAllocation(results.lineItems),
+      recipes: results.recipeResults,
+      kanda: results.run.kandaCount > 0
+        ? { count: results.run.kandaCount, redRiceG: results.run.kandaCount * 30 }
+        : null,
+      extras: results.run.extrasTotals,
+      customExtras: results.run.customExtrasTotals,
+    };
+
+    res.status(200).json({ cookSheet });
+  } catch (error) {
+    console.error("GET COOK SHEET ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch cook sheet" });
+  }
+};
