@@ -156,7 +156,7 @@ function Login() {
             </div>
 
             {/* Stats row */}
-            <div className="flex items-center gap-0 bg-white/[0.08] backdrop-blur-md border border-white/12 rounded-2xl px-6 py-4">
+            {/* <div className="flex items-center gap-0 bg-white/[0.08] backdrop-blur-md border border-white/12 rounded-2xl px-6 py-4">
               {[
                 { value: "24/7", label: "Operations" },
                 { value: "12+", label: "Active Wards" },
@@ -170,7 +170,7 @@ function Login() {
                   <p className="text-white/35 text-[10.5px] uppercase tracking-wider mt-0.5">{label}</p>
                 </div>
               ))}
-            </div>
+            </div> */}
 
             {/* Copyright */}
             <p className="text-white/20 text-[11px] mt-5">
