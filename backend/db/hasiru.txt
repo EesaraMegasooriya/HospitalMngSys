@@ -181,18 +181,18 @@ BEGIN
 END $$;
  
 
-INSERT INTO categories (id, name) VALUES
-(1, 'Rice / Bread / Noodles / Hoppers'),
-(2, 'Meat / Fish / Egg / Dried Fish'),
-(3, 'Vegetables - Palaa (Leaves)'),
-(4, 'Vegetables - Gedi (Vegetable Fruits)'),
-(5, 'Vegetables - Piti (Starchy)'),
-(6, 'Vegetables - Other'),
-(7, 'Fruits'),
-(8, 'Currystuffs & Condiments'),
-(9, 'Sugar / Milk & Milk Products'),
-(10, 'Biscuits'),
-(11, 'Nutritional Supplements');
+    INSERT INTO categories (id, name) VALUES
+    (1, 'Rice / Bread / Noodles / Hoppers'),
+    (2, 'Meat / Fish / Egg / Dried Fish'),
+    (3, 'Vegetables - Palaa (Leaves)'),
+    (4, 'Vegetables - Gedi (Vegetable Fruits)'),
+    (5, 'Vegetables - Piti (Starchy)'),
+    (6, 'Vegetables - Other'),
+    (7, 'Fruits'),
+    (8, 'Currystuffs & Condiments'),
+    (9, 'Sugar / Milk & Milk Products'),
+    (10, 'Biscuits'),
+    (11, 'Nutritional Supplements');
 
 
 ALTER TABLE items

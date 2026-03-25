@@ -21,6 +21,7 @@ const getAuthHeaders = () => {
 
 const today = getTodaySL();
 const Calculations = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   const [isCalculating, setIsCalculating] = useState(false);

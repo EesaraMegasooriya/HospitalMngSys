@@ -48,7 +48,8 @@ const NormWeights = () => {
         const weightsData = await weightsRes.json();
         const dietsData = await dietsRes.json();
 
-        setItems(itemsData.items || []);
+        // Only show items that use norm_weight calculation (exclude raw_sum extras)
+        setItems((itemsData.items || []).filter((i) => i.calcType !== "raw_sum"));
         setWeights(weightsData.weights || []);
         
         // Filter active diets and sort them by the displayOrder set by the Admin
