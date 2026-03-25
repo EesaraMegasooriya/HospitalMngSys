@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Loader2, FileText } from "lucide-react";
+import { Search, Loader2, FileText, ClipboardList } from "lucide-react";
 import { getTodaySL } from "@/lib/date-utils";
 
 const API_BASE = "http://localhost:5050/api";
@@ -35,21 +35,19 @@ const CalculationResults = () => {
   const [breakdownData, setBreakdownData] = useState(null);
   const [loadingBreakdown, setLoadingBreakdown] = useState(false);
 
-  // Data from API
   const [calcRun, setCalcRun] = useState(null);
   const [tabs, setTabs] = useState({});
   const [categories, setCategories] = useState([]);
+  const [poLineItems, setPoLineItems] = useState([]);
 
-  // ALL items from database grouped by categoryId
   const [allItemsByCategory, setAllItemsByCategory] = useState({});
+  const [flatItems, setFlatItems] = useState([]); 
 
-  // Recipe results (Pol Sambola, Soup, Kanda, etc.)
   const [recipeResults, setRecipeResults] = useState([]);
-
-  // Selected items for ordering: { itemId: { selected: true, quantity: 4.905, customPrice: null } }
+  
+  // Start completely empty so the clerk has 100% control
   const [selections, setSelections] = useState({});
 
-  // Fetch calculation results + items
   useEffect(() => {
     const fetchResults = async () => {
       try {
@@ -71,30 +69,44 @@ const CalculationResults = () => {
         setCategories(cats);
         if (cats.length > 0) setActiveTab(String(cats[0].id));
 
-        // Store recipe results
         setRecipeResults(calcData.recipeResults || []);
+        setPoLineItems(calcData.poLineItems || []);
 
-        // Group ALL items by categoryId
         const items = itemsData.items || [];
+        setFlatItems(items);
+
+        // Group ALL items by categoryId, and duplicate Extras into their own tab
         const grouped = {};
+        const extrasList = [];
+
         for (const item of items) {
           const catId = String(item.categoryId);
           if (!grouped[catId]) grouped[catId] = [];
-          grouped[catId].push({
+          
+          const itemObj = {
             id: item.id,
             nameEn: item.nameEn,
             nameSi: item.nameSi,
             unit: item.unit,
             defaultPrice: item.defaultPrice || 0,
-          });
+            categoryId: item.categoryId,
+            isExtra: item.isExtra || false
+          };
+          
+          grouped[catId].push(itemObj);
+
+          if (item.isExtra) {
+              extrasList.push(itemObj);
+          }
         }
+        grouped['extras'] = extrasList;
         setAllItemsByCategory(grouped);
+
+        // Explicitly start with no auto-selections
+        setSelections({});
+
       } catch (error) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to load calculation results",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: error.message || "Failed to load calculation results", variant: "destructive" });
       } finally {
         setLoading(false);
       }
@@ -103,15 +115,11 @@ const CalculationResults = () => {
     fetchResults();
   }, [toast]);
 
-  // Fetch item breakdown when clicking 🔍
   const fetchBreakdown = async (item) => {
     setBreakdownItem(item);
     setLoadingBreakdown(true);
     try {
-      const res = await fetch(
-        `${API_BASE}/calculations/breakdown/${item.id}?date=${today}`,
-        { headers: getAuthHeaders() }
-      );
+      const res = await fetch(`${API_BASE}/calculations/breakdown/${item.id}?date=${today}`, { headers: getAuthHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to fetch breakdown");
       setBreakdownData(data);
@@ -123,17 +131,14 @@ const CalculationResults = () => {
     }
   };
 
-  // ─── Selection helpers ───
   const toggleItemSelection = (item, defaultQty) => {
     setSelections((prev) => {
       const existing = prev[item.id];
       if (existing?.selected) {
-        // Deselect
         const next = { ...prev };
         delete next[item.id];
         return next;
       }
-      // Select and default to the item's calculated grand total (if any), otherwise 0
       return {
         ...prev,
         [item.id]: { selected: true, quantity: defaultQty || 0, unit: item.unit || "Kg", customPrice: null },
@@ -148,7 +153,69 @@ const CalculationResults = () => {
     }));
   };
 
-  // ─── Render: Calculated totals table (read-only reference) ───
+  const handleGeneratePO = async () => {
+    setGeneratingPO(true);
+    try {
+      const finalSelectedItems = [];
+      
+      // Pull EXACTLY what the user ticked in the UI boxes. No hidden items.
+      for (const [itemId, sel] of Object.entries(selections)) {
+        if (sel.selected && sel.quantity > 0) {
+           const itemInfo = flatItems.find(i => String(i.id) === String(itemId));
+           if (itemInfo) {
+               finalSelectedItems.push({
+                   itemId: itemInfo.id,
+                   categoryId: itemInfo.categoryId,
+                   quantity: sel.quantity,
+                   unit: itemInfo.unit,
+                   unitPrice: itemInfo.defaultPrice,
+                   defaultPrice: itemInfo.defaultPrice,
+                   forBreakfast: true,
+                   forLunch: true,
+                   forDinner: true,
+                   forExtra: itemInfo.isExtra || false,
+                   forKanda: false,
+               });
+           }
+        }
+      }
+
+      if (finalSelectedItems.length === 0) {
+        toast({ title: "No items to order", description: "Please select items via the checkboxes.", variant: "destructive" });
+        setGeneratingPO(false);
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/orders`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          date: calcRun.date || today,
+          calcRunId: calcRun.id,
+          items: finalSelectedItems,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 409 && data.existingId) {
+          toast({ title: "PO Already Exists", description: "Navigating to existing purchase order." });
+          navigate(`/orders/${data.existingId}`);
+          return;
+        }
+        throw new Error(data.message || "Failed to create purchase order");
+      }
+
+      toast({ title: "Purchase Order Created", description: `PO #${data.po.billNumber} created successfully.` });
+      navigate(`/orders/${data.po.id}`);
+    } catch (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setGeneratingPO(false);
+    }
+  };
+
   const renderCalculatedTable = (items) => (
     <Table>
       <TableHeader>
@@ -169,39 +236,24 @@ const CalculationResults = () => {
             <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
             <TableCell className="font-medium">{item.nameEn}</TableCell>
             <TableCell className="hidden md:table-cell text-muted-foreground">{item.nameSi}</TableCell>
-            <TableCell className="text-right">
-              {item.breakfast != null ? `${item.breakfast} ${item.unit}` : "—"}
-            </TableCell>
-            <TableCell className="text-right">
-              {item.lunch != null ? `${item.lunch} ${item.unit}` : "—"}
-            </TableCell>
-            <TableCell className="text-right">
-              {item.dinner != null ? `${item.dinner} ${item.unit}` : "—"}
-            </TableCell>
-            <TableCell className="text-right font-bold text-primary">
-              {item.grandTotal} {item.unit}
-            </TableCell>
+            <TableCell className="text-right">{item.breakfast != null ? `${item.breakfast} ${item.unit}` : "—"}</TableCell>
+            <TableCell className="text-right">{item.lunch != null ? `${item.lunch} ${item.unit}` : "—"}</TableCell>
+            <TableCell className="text-right">{item.dinner != null ? `${item.dinner} ${item.unit}` : "—"}</TableCell>
+            <TableCell className="text-right font-bold text-primary">{item.grandTotal} {item.unit}</TableCell>
             <TableCell>
               {item.breakdown && item.breakdown.length > 0 && (
-                <Button variant="ghost" size="icon" onClick={() => fetchBreakdown(item)} className="touch-target">
-                  <Search className="h-4 w-4" />
-                </Button>
+                <Button variant="ghost" size="icon" onClick={() => fetchBreakdown(item)} className="touch-target"><Search className="h-4 w-4" /></Button>
               )}
             </TableCell>
           </TableRow>
         ))}
         {items.length === 0 && (
-          <TableRow>
-            <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
-              No items calculated for this category
-            </TableCell>
-          </TableRow>
+          <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">No items calculated for this category</TableCell></TableRow>
         )}
       </TableBody>
     </Table>
   );
 
-  // ─── Render: Item selection table with checkboxes ───
   const renderSelectionTable = (catId, catName) => {
     const options = allItemsByCategory[catId] || [];
     const selectedCount = options.filter((o) => selections[o.id]?.selected).length;
@@ -212,14 +264,8 @@ const CalculationResults = () => {
       <Card className="mt-4 border-primary/20">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-label font-semibold">
-              Select Items to Order — {catName}
-            </CardTitle>
-            {selectedCount > 0 && (
-              <span className="text-xs font-semibold text-primary">
-                {selectedCount} item{selectedCount > 1 ? "s" : ""} selected
-              </span>
-            )}
+            <CardTitle className="text-label font-semibold">Select Items to Order — {catName}</CardTitle>
+            {selectedCount > 0 && (<span className="text-xs font-semibold text-primary">{selectedCount} item{selectedCount > 1 ? "s" : ""} selected</span>)}
           </div>
         </CardHeader>
         <CardContent className="pt-0">
@@ -241,70 +287,45 @@ const CalculationResults = () => {
                 const qty = selections[item.id]?.quantity || 0;
                 const totalPrice = Math.round(qty * item.defaultPrice * 100) / 100;
 
-                // Find if this item has a calculated grand total from the engine today
-                const calculatedItem = (tabs[catId] || []).find((t) => String(t.id) === String(item.id));
-                const suggestedQty = calculatedItem ? calculatedItem.grandTotal : 0;
+                const calculatedItem = poLineItems.find((po) => String(po.itemId) === String(item.id));
+                let suggestedQty = calculatedItem ? calculatedItem.calculatedQty : 0;
+                
+                if (suggestedQty === 0 && item.isExtra && calcRun?.extrasTotals) {
+                    suggestedQty = Number(calcRun.extrasTotals[item.nameEn]) || 0;
+                }
 
                 return (
-                  <TableRow
-                    key={item.id}
-                    className={isSelected ? "bg-primary/5 border-l-2 border-l-primary" : "opacity-80"}
-                  >
-                    <TableCell>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleItemSelection(item, suggestedQty)}
-                      />
-                    </TableCell>
+                  <TableRow key={item.id} className={isSelected ? "bg-primary/5 border-l-2 border-l-primary" : "opacity-80"}>
+                    <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleItemSelection(item, suggestedQty)} /></TableCell>
                     <TableCell className={`font-medium ${isSelected ? "" : "text-muted-foreground"}`}>
-                      {item.nameEn}
+                      <div className="flex items-center flex-wrap gap-2">
+                        <span>{item.nameEn}</span>
+                        {/* THE FIX: Highly visible 'Requested' badge for Subject Clerk guidance */}
+                        {suggestedQty > 0 && (
+                          <Badge variant="outline" className="text-[10px] h-6 bg-warning/10 text-warning border-warning/30 font-bold whitespace-nowrap gap-1">
+                            <ClipboardList className="h-3 w-3" /> Requested: {suggestedQty}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {item.nameSi}
-                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground">{item.nameSi}</TableCell>
                     <TableCell className="text-muted-foreground">{item.unit}</TableCell>
-                    <TableCell className="text-right">
-                      Rs. {item.defaultPrice.toLocaleString()}
-                    </TableCell>
+                    <TableCell className="text-right">Rs. {item.defaultPrice.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       {isSelected ? (
-                        <Input
-                          type="number"
-                          step="0.001"
-                          min={0}
-                          value={qty || ""}
-                          onChange={(e) => updateSelectionQuantity(item.id, e.target.value)}
-                          className="w-28 h-8 text-right text-sm ml-auto [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        />
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                        <Input type="number" step="0.001" min={0} value={qty === 0 ? "" : qty} placeholder={suggestedQty > 0 ? String(suggestedQty) : "0"} onChange={(e) => updateSelectionQuantity(item.id, e.target.value)} className="w-28 h-8 text-right text-sm ml-auto [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
+                      ) : (<span className="text-muted-foreground">—</span>)}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {isSelected && qty > 0 ? (
-                        <span className="text-primary">Rs. {totalPrice.toLocaleString()}</span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      {isSelected && qty > 0 ? (<span className="text-primary">Rs. {totalPrice.toLocaleString()}</span>) : (<span className="text-muted-foreground">—</span>)}
                     </TableCell>
                   </TableRow>
                 );
               })}
-
-              {/* Category subtotal row (Financials Only) */}
               {selectedCount > 0 && (
                 <TableRow className="bg-primary/10 font-bold">
-                  <TableCell colSpan={6} className="text-right text-primary">
-                    Category Price Subtotal
-                  </TableCell>
-                  <TableCell className="text-right text-primary">
-                    Rs. {Math.round(
-                      options
-                        .filter((o) => selections[o.id]?.selected)
-                        .reduce((sum, o) => sum + (selections[o.id]?.quantity || 0) * o.defaultPrice, 0)
-                      * 100
-                    ) / 100}
-                  </TableCell>
+                  <TableCell colSpan={6} className="text-right text-primary">Category Price Subtotal</TableCell>
+                  <TableCell className="text-right text-primary">Rs. {Math.round(options.filter((o) => selections[o.id]?.selected).reduce((sum, o) => sum + (selections[o.id]?.quantity || 0) * o.defaultPrice, 0) * 100) / 100}</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -331,30 +352,26 @@ const CalculationResults = () => {
     );
   }
 
-  // Grand total of all selected items across all categories
-  const grandTotal = Math.round(
-    Object.values(allItemsByCategory)
-      .flat()
-      .filter((item) => selections[item.id]?.selected)
-      .reduce((sum, item) => sum + (selections[item.id]?.quantity || 0) * item.defaultPrice, 0)
-    * 100
-  ) / 100;
+  let grandTotal = 0;
+  const processedItemIds = new Set();
+
+  for (const [catId, catItems] of Object.entries(allItemsByCategory)) {
+     for (const item of catItems) {
+         if (selections[item.id]?.selected && !processedItemIds.has(item.id)) {
+             grandTotal += (selections[item.id].quantity || 0) * item.defaultPrice;
+             processedItemIds.add(item.id);
+         }
+     }
+  }
+  grandTotal = Math.round(grandTotal * 100) / 100;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-heading-md font-bold text-foreground">
-          Calculation Results — {calcRun.date}
-        </h1>
+        <h1 className="text-heading-md font-bold text-foreground">Calculation Results — {calcRun.date}</h1>
         <div className="flex items-center gap-3">
-          <Badge className="bg-primary text-primary-foreground capitalize">
-            {calcRun.status}
-          </Badge>
-          {grandTotal > 0 && (
-            <Badge className="bg-badge-hospital text-primary-foreground text-sm px-3 py-1">
-              Grand Total: Rs. {grandTotal.toLocaleString()}
-            </Badge>
-          )}
+          <Badge className="bg-primary text-primary-foreground capitalize">{calcRun.status}</Badge>
+          {grandTotal > 0 && (<Badge className="bg-badge-hospital text-primary-foreground text-sm px-3 py-1">Grand Total: Rs. {grandTotal.toLocaleString()}</Badge>)}
         </div>
       </div>
 
@@ -363,15 +380,14 @@ const CalculationResults = () => {
           {categories.map((cat) => {
             const catId = String(cat.id);
             const catItems = allItemsByCategory[catId] || [];
-            const selectedCount = catItems.filter((o) => selections[o.id]?.selected).length;
+            // Remove duplicate items before counting selections
+            const uniqueCatItems = Array.from(new Map(catItems.map(i => [i.id, i])).values());
+            const selectedCount = uniqueCatItems.filter((o) => selections[o.id]?.selected).length;
+            
             return (
               <TabsTrigger key={cat.id} value={catId} className="text-label gap-1.5">
                 {cat.name}
-                {selectedCount > 0 && (
-                  <span className="bg-primary text-primary-foreground text-[10px] rounded-full px-1.5 py-0.5">
-                    {selectedCount}
-                  </span>
-                )}
+                {selectedCount > 0 && (<span className="bg-primary text-primary-foreground text-[10px] rounded-full px-1.5 py-0.5">{selectedCount}</span>)}
               </TabsTrigger>
             );
           })}
@@ -383,43 +399,27 @@ const CalculationResults = () => {
 
           return (
             <TabsContent key={cat.id} value={catId}>
-              {/* Calculated requirements (read-only reference) */}
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-label font-semibold">
-                    Calculated Requirements
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  {renderCalculatedTable(catItems)}
-                </CardContent>
+                <CardHeader className="pb-2"><CardTitle className="text-label font-semibold">Calculated Requirements</CardTitle></CardHeader>
+                <CardContent className="pt-2">{renderCalculatedTable(catItems)}</CardContent>
               </Card>
-
-              {/* Item selection table with checkboxes and prices */}
               {renderSelectionTable(catId, cat.name)}
             </TabsContent>
           );
         })}
       </Tabs>
 
-      {/* Special Requests — Recipe Calculations */}
       {recipeResults.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-heading-sm font-semibold text-foreground">
-            Special Requests — Recipe Calculations
-          </h2>
+          <h2 className="text-heading-sm font-semibold text-foreground">Special Requests — Recipe Calculations</h2>
           {recipeResults.map((recipe) => (
             <Card key={recipe.recipeId}>
               <CardHeader className="pb-2">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <CardTitle className="text-label font-semibold">{recipe.recipeName}</CardTitle>
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-muted text-muted-foreground">
-                      {recipe.rawPatientCount} patients requested
-                    </Badge>
-                    <Badge className="bg-primary/20 text-primary">
-                      Weighted count: {recipe.weightedCount}
-                    </Badge>
+                    <Badge className="bg-muted text-muted-foreground">{recipe.rawPatientCount} patients requested</Badge>
+                    <Badge className="bg-primary/20 text-primary">Weighted count: {recipe.weightedCount}</Badge>
                   </div>
                 </div>
               </CardHeader>
@@ -446,13 +446,6 @@ const CalculationResults = () => {
                         <TableCell className="text-muted-foreground">{ing.unit}</TableCell>
                       </TableRow>
                     ))}
-                    {(recipe.ingredients || []).length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
-                          No ingredients configured for this recipe
-                        </TableCell>
-                      </TableRow>
-                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -461,144 +454,35 @@ const CalculationResults = () => {
         </div>
       )}
 
-      {/* Sticky bottom bar with Generate PO button */}
-      {grandTotal > 0 && (
-        <div className="sticky bottom-0 z-10 bg-background border-t py-4 -mx-4 px-4 md:-mx-6 md:px-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              {Object.values(selections).filter((s) => s.selected).length} items selected across all categories
-            </p>
-            <p className="text-lg font-bold text-primary">
-              Grand Total: Rs. {grandTotal.toLocaleString()}
-            </p>
-          </div>
-          <Button
-            size="lg"
-            className="h-12 px-8 touch-target"
-            disabled={generatingPO}
-            onClick={async () => {
-              setGeneratingPO(true);
-              try {
-                // Build items payload from selections + allItemsByCategory
-                const selectedItems = [];
-                for (const [catId, catItems] of Object.entries(allItemsByCategory)) {
-                  for (const item of catItems) {
-                    const sel = selections[item.id];
-                    if (sel?.selected && sel.quantity > 0) {
-                      selectedItems.push({
-                        itemId: item.id,
-                        categoryId: parseInt(catId),
-                        quantity: sel.quantity,
-                        unit: item.unit,
-                        unitPrice: item.defaultPrice,
-                        defaultPrice: item.defaultPrice,
-                        forBreakfast: true,
-                        forLunch: true,
-                        forDinner: true,
-                        forExtra: false,
-                        forKanda: false,
-                      });
-                    }
-                  }
-                }
-
-                if (selectedItems.length === 0) {
-                  toast({ title: "No items selected", description: "Please select at least one item to order.", variant: "destructive" });
-                  setGeneratingPO(false);
-                  return;
-                }
-
-                const res = await fetch(`${API_BASE}/orders`, {
-                  method: "POST",
-                  headers: getAuthHeaders(),
-                  body: JSON.stringify({
-                    date: calcRun.date || today,
-                    calcRunId: calcRun.id,
-                    items: selectedItems,
-                  }),
-                });
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                  // If PO already exists, navigate to it
-                  if (res.status === 409 && data.existingId) {
-                    toast({ title: "PO Already Exists", description: "Navigating to existing purchase order." });
-                    navigate(`/orders/${data.existingId}`);
-                    return;
-                  }
-                  throw new Error(data.message || "Failed to create purchase order");
-                }
-
-                toast({
-                  title: "Purchase Order Created",
-                  description: `PO #${data.po.billNumber} created with Rs. ${data.po.originalTotal.toLocaleString()} total`,
-                });
-                navigate(`/orders/${data.po.id}`);
-              } catch (error) {
-                toast({ title: "Error", description: error.message, variant: "destructive" });
-              } finally {
-                setGeneratingPO(false);
-              }
-            }}
-          >
-            {generatingPO ? (
-              <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Generating...</>
-            ) : (
-              <><FileText className="h-5 w-5 mr-2" /> Generate Purchase Order</>
-            )}
-          </Button>
+      {/* Sticky Bottom Bar */}
+      <div className="sticky bottom-0 z-10 bg-background border-t py-4 -mx-4 px-4 md:-mx-6 md:px-6 flex items-center justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">{processedItemIds.size} items manually selected across all categories</p>
+          <p className="text-lg font-bold text-primary">Grand Total: Rs. {grandTotal.toLocaleString()}</p>
         </div>
-      )}
+        <Button size="lg" className="h-12 px-8 touch-target" disabled={generatingPO || processedItemIds.size === 0} onClick={handleGeneratePO}>
+          {generatingPO ? (<><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Generating...</>) : (<><FileText className="h-5 w-5 mr-2" /> Generate Purchase Order</>)}
+        </Button>
+      </div>
 
-      {/* Breakdown Dialog */}
-      <Dialog
-        open={!!breakdownItem}
-        onOpenChange={() => { setBreakdownItem(null); setBreakdownData(null); }}
-      >
+      <Dialog open={!!breakdownItem} onOpenChange={() => { setBreakdownItem(null); setBreakdownData(null); }}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{breakdownItem?.nameEn} — Breakdown</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{breakdownItem?.nameEn} — Breakdown</DialogTitle></DialogHeader>
           {loadingBreakdown ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
+            <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : breakdownData ? (
             <div>
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Diet Type</TableHead>
-                    <TableHead className="text-right">Total (g)</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow><TableHead>Diet Type</TableHead><TableHead className="text-right">Total (g)</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {breakdownData.breakdown.map((r) => (
-                    <TableRow key={r.code}>
-                      <TableCell>{r.dietType}</TableCell>
-                      <TableCell className="text-right">{r.totalG.toLocaleString()}</TableCell>
-                    </TableRow>
+                    <TableRow key={r.code}><TableCell>{r.dietType}</TableCell><TableCell className="text-right">{r.totalG.toLocaleString()}</TableCell></TableRow>
                   ))}
                 </TableBody>
               </Table>
-              <div className="mt-4 p-3 bg-primary/10 rounded-lg text-center font-semibold text-primary">
-                Grand Total: {breakdownItem?.grandTotal} {breakdownItem?.unit}
-              </div>
-              {breakdownData.meals && (
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {breakdownData.meals.map((m) => (
-                    <div key={m.meal} className="bg-muted rounded-lg p-2 text-center">
-                      <p className="text-xs text-muted-foreground capitalize">{m.meal}</p>
-                      <p className="text-sm font-bold">{m.displayValue} {m.displayUnit}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="mt-4 p-3 bg-primary/10 rounded-lg text-center font-semibold text-primary">Grand Total: {breakdownItem?.grandTotal} {breakdownItem?.unit}</div>
             </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-4">No breakdown data available</p>
-          )}
+          ) : (<p className="text-muted-foreground text-center py-4">No breakdown data available</p>)}
         </DialogContent>
       </Dialog>
     </div>
