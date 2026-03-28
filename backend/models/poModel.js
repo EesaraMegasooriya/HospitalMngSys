@@ -1,10 +1,6 @@
 // models/poModel.js
 const pool = require("../config/db");
 
-// ──────────────────────────────────────────────
-// Purchase Order CRUD
-// ──────────────────────────────────────────────
-
 exports.createPurchaseOrder = async ({ calcRunId, poDate, items, createdBy }) => {
   const client = await pool.connect();
   try {
@@ -265,7 +261,6 @@ exports.getPurchaseOrderById = async (poId) => {
   if (poResult.rows.length === 0) return null;
   const po = mapPoRow(poResult.rows[0]);
 
-  // FIX: Added WHERE pi.po_id = $1 to only fetch items for THIS purchase order
   const itemsResult = await pool.query(`
     SELECT
       pi.*,
@@ -279,7 +274,13 @@ exports.getPurchaseOrderById = async (poId) => {
   `, [poId]);
 
   const categoriesMap = {};
+  const flatItems = []; // <-- ADDED: Create a flat list for the Invoice view
+
   for (const row of itemsResult.rows) {
+    const mappedItem = mapPoItemRow(row);
+    
+    flatItems.push(mappedItem); // Push to flat list
+
     const catId = row.category_id;
     if (!categoriesMap[catId]) {
       categoriesMap[catId] = {
@@ -288,10 +289,12 @@ exports.getPurchaseOrderById = async (poId) => {
         items: [],
       };
     }
-    categoriesMap[catId].items.push(mapPoItemRow(row));
+    categoriesMap[catId].items.push(mappedItem); // Push to grouped list
   }
 
   po.categories = Object.values(categoriesMap);
+  po.items = flatItems; // <-- ADDED: Attach the flat list to the response payload
+  
   po.itemCount = itemsResult.rows.length;
   po.priceChanges = itemsResult.rows.filter((r) => r.is_price_changed).length;
 
