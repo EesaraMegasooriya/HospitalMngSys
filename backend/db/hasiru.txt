@@ -308,3 +308,5 @@ CREATE TABLE invoice_items (
 CREATE INDEX idx_invoices_po_id ON invoices(po_id);
 CREATE INDEX idx_invoices_status ON invoices(status);
 CREATE INDEX idx_invoice_items_invoice_id ON invoice_items(invoice_id);
+
+ALTER TABLE invoices ADD COLUMN notes TEXT;
