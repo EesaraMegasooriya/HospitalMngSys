@@ -73,10 +73,10 @@ function Login() {
 
   const fieldClass = (field) =>
     `w-full pl-11 pr-4 py-[13px] text-[15px] bg-white rounded-xl border outline-none
-     transition-all duration-200 placeholder:text-gray-300 text-gray-800
+     transition-all duration-200 placeholder:text-gray-1000 text-gray-1000
      ${errors[field]
       ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
-      : "border-gray-200 focus:border-[#2d6a4e] focus:ring-2 focus:ring-[#2d6a4e]/10"
+      : "border-gray-400 focus:border-[#2d6a4e] focus:ring-2 focus:ring-[#2d6a4e]/10"
     }`;
 
   return (
@@ -155,26 +155,9 @@ function Login() {
               ))}
             </div>
 
-            {/* Stats row */}
-            {/* <div className="flex items-center gap-0 bg-white/[0.08] backdrop-blur-md border border-white/12 rounded-2xl px-6 py-4">
-              {[
-                { value: "24/7", label: "Operations" },
-                { value: "12+", label: "Active Wards" },
-                { value: "98%", label: "Meal Accuracy" },
-              ].map(({ value, label }, i) => (
-                <div
-                  key={label}
-                  className={`flex-1 text-center ${i > 0 ? "border-l border-white/12" : ""}`}
-                >
-                  <p className="text-emerald-400 text-[1.3rem] font-bold leading-tight">{value}</p>
-                  <p className="text-white/35 text-[10.5px] uppercase tracking-wider mt-0.5">{label}</p>
-                </div>
-              ))}
-            </div> */}
-
-            {/* Copyright */}
+            
             <p className="text-white/20 text-[11px] mt-5">
-              © 2025 DGH Gampaha &nbsp;·&nbsp; Confidential Staff Portal
+               DGH Gampaha &nbsp;·&nbsp; 
             </p>
           </div>
         </div>
@@ -198,7 +181,7 @@ function Login() {
               Staff Portal
             </p>
             <h2 className="text-gray-900 text-[1.9rem] font-bold mb-2 leading-tight">
-              Welcome back
+              Welcome 
             </h2>
             <p className="text-gray-400 text-[14.5px] leading-relaxed">
               Sign in to access the meal management dashboard.
@@ -217,12 +200,12 @@ function Login() {
 
             {/* Email */}
             <div>
-              <label className="block text-[13px] font-semibold text-gray-600 mb-1.5">
+              <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
                 Email address
               </label>
               <div className="relative">
                 <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200
-                  ${errors.email ? "text-red-400" : form.email ? "text-[#2d6a4e]" : "text-gray-300"}`}>
+                  ${errors.email ? "text-red-400" : form.email ? "text-[#2d6a4e]" : "text-gray-600"}`}>
                   <User className="w-4 h-4" strokeWidth={1.8} />
                 </span>
                 <input
@@ -241,12 +224,12 @@ function Login() {
 
             {/* Password */}
             <div>
-              <label className="block text-[13px] font-semibold text-gray-600 mb-1.5">
+              <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
                 Password
               </label>
               <div className="relative">
                 <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200
-                  ${errors.password ? "text-red-400" : form.password ? "text-[#2d6a4e]" : "text-gray-300"}`}>
+                  ${errors.password ? "text-red-400" : form.password ? "text-[#2d6a4e]" : "text-gray-600"}`}>
                   <Lock className="w-4 h-4" strokeWidth={1.8} />
                 </span>
                 <input
