@@ -244,7 +244,7 @@ function Login() {
                   type="button"
                   onClick={() => setShowPass((v) => !v)}
                   aria-label={showPass ? "Hide password" : "Show password"}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#2d6a4e] transition-colors duration-200 p-0.5"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#2d6a4e] transition-colors duration-200 p-0.5"
                 >
                   {showPass
                     ? <EyeOff className="w-4 h-4" strokeWidth={1.8} />
@@ -263,11 +263,11 @@ function Login() {
                 <div
                   onClick={() => setRemember((v) => !v)}
                   className={`w-[18px] h-[18px] rounded-md border-[1.5px] flex items-center justify-center transition-all duration-200 cursor-pointer flex-shrink-0
-                    ${remember ? "bg-[#2d6a4e] border-[#2d6a4e]" : "bg-white border-gray-300 hover:border-[#2d6a4e]"}`}
+                    ${remember ? "bg-[#2d6a4e] border-[#2d6a4e]" : "bg-white border-gray-600 hover:border-[#2d6a4e]"}`}
                 >
                   {remember && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                 </div>
-                <span className="text-[13.5px] text-gray-500">Keep me signed in</span>
+                <span className="text-[13.5px] text-gray-600">Keep me signed in</span>
               </label>
 
               <button
@@ -307,7 +307,7 @@ function Login() {
           </form>
 
           {/* Footer */}
-          <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-1.5 text-[13px] text-gray-400">
+          {/* <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-1.5 text-[13px] text-gray-400">
             <Shield className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
             <span>
               Need access?{" "}
@@ -315,10 +315,10 @@ function Login() {
                 href="#"
                 className="font-semibold text-[#2d6a4e] hover:text-[#1a4030] transition-colors duration-200"
               >
-                Contact IT Support
+                Contact IT Support 
               </a>
             </span>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

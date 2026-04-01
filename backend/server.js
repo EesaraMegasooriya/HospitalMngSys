@@ -21,6 +21,7 @@ const dietTypeRoutes = require("./routes/dietTypesRoutes");
 const poRoutes = require("./routes/poRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
 const itemsRoutes = require("./routes/itemsRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 const app = express();
 
@@ -55,6 +56,8 @@ app.use("/api/diet-types", dietTypeRoutes);
 app.use("/api/recipes", recipesRoutes);
 app.use("/api/orders", poRoutes);
 app.use("/api/invoices",invoiceRoutes);
+app.use("/api/reports",reportRoutes);
+
 //-------------------------------------------------------------------------
 app.use("/api", hospitalAdminRoutes);
 

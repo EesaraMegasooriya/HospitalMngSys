@@ -15,6 +15,7 @@ import {
 import { CalendarDays, Utensils } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTodaySL } from "@/lib/date-utils";
+import { cn } from "@/lib/utils";
 
 const API_BASE = "http://localhost:5050/api/census";
 
@@ -26,11 +27,12 @@ const getAuthHeaders = () => {
   };
 };
 
+// 👇 Upgraded to use rich theme colors and locked hover states
 const statusConfig = {
-  not_started: { label: "Not Started", className: "bg-muted text-muted-foreground" },
-  draft: { label: "Draft", className: "bg-warning-bg text-warning border-warning/30" },
-  submitted: { label: "Submitted", className: "bg-accent text-accent-foreground" },
-  locked: { label: "Locked", className: "bg-destructive/10 text-destructive" },
+  not_started: { label: "Not Started", className: "bg-muted text-muted-foreground hover:bg-muted border-transparent font-medium" },
+  draft: { label: "Draft", className: "bg-warning-bg text-warning hover:bg-warning-bg border-transparent font-medium" },
+  submitted: { label: "Submitted", className: "bg-success text-success-foreground hover:bg-success border-transparent font-medium" },
+  locked: { label: "Locked", className: "bg-destructive/20 text-destructive hover:bg-destructive/20 border-transparent font-medium" },
 };
 
 const CensusSubmissions = () => {
@@ -75,20 +77,17 @@ const CensusSubmissions = () => {
   useEffect(() => {
     fetchSubmissions(filterDate);
 
-    // Fetch diet types for display names
     fetch("http://localhost:5050/api/diet-types", { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((data) => setDietTypes(data.dietTypes || []))
       .catch(() => {});
 
-    // Fetch recipes for special request display names
     fetch("http://localhost:5050/api/recipes", { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((data) => setRecipes(data.recipes || []))
       .catch(() => {});
   }, [filterDate]);
 
-  // Get diet type display label: "Normal (NOR)" instead of just "NOR"
   const getDietLabel = (code) => {
     const dt = dietTypes.find(
       (d) => String(d.code) === String(code) || String(d.id) === String(code)
@@ -96,7 +95,6 @@ const CensusSubmissions = () => {
     return dt ? `${dt.nameEn} (${dt.code})` : code;
   };
 
-  // Get recipe display name: "Pol Sambola" instead of "polSambola"
   const getSpecialLabel = (key) => {
     const recipe = recipes.find(
       (r) => r.recipeKey === key || r.recipeKey?.toLowerCase() === key?.toLowerCase()
@@ -105,24 +103,30 @@ const CensusSubmissions = () => {
     return key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
   };
 
-  const visibleSubmissions = useMemo(() => submissions || [], [submissions]);
+  // 👇 Sort submissions alphabetically by Ward Name
+  const sortedSubmissions = useMemo(() => {
+    return [...(submissions || [])].sort((a, b) => 
+      (a.wardName || "").localeCompare(b.wardName || "")
+    );
+  }, [submissions]);
 
   const staffTotal = staffMeals
     ? (staffMeals.breakfast || 0) + (staffMeals.lunch || 0) + (staffMeals.dinner || 0)
     : 0;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-heading-lg text-foreground">My Submissions</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-heading-lg font-bold text-foreground">My Submissions</h1>
 
-        <div className="flex items-center gap-2">
-          <Label className="text-label font-semibold shrink-0">Date:</Label>
+        <div className="flex items-center gap-3">
+          <Label className="text-base font-semibold shrink-0">Date:</Label>
+          {/* 👇 Bumped input size to h-12 text-base */}
           <Input
             type="date"
             value={filterDate}
             onChange={(e) => setFilterDate(e.target.value)}
-            className="h-10 w-44 text-label"
+            className="h-12 w-48 text-base touch-target cursor-pointer"
           />
         </div>
       </div>
@@ -130,48 +134,40 @@ const CensusSubmissions = () => {
       {/* Staff Meals Card */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-label font-semibold flex items-center gap-2">
-            <Utensils className="h-4 w-4 text-primary" />
+          <CardTitle className="text-heading-sm flex items-center gap-2">
+            <Utensils className="h-5 w-5 text-primary" />
             Staff Meals
           </CardTitle>
         </CardHeader>
         <CardContent>
           {staffMeals ? (
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground">Breakfast</p>
-                  <p className="text-xl font-bold text-foreground">{staffMeals.breakfast || 0}</p>
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-3 gap-6">
+                <div className="bg-muted rounded-xl p-4 text-center">
+                  <p className="text-sm font-semibold text-muted-foreground">Breakfast</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{staffMeals.breakfast || 0}</p>
                 </div>
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground">Lunch</p>
-                  <p className="text-xl font-bold text-foreground">{staffMeals.lunch || 0}</p>
+                <div className="bg-muted rounded-xl p-4 text-center">
+                  <p className="text-sm font-semibold text-muted-foreground">Lunch</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{staffMeals.lunch || 0}</p>
                 </div>
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground">Dinner</p>
-                  <p className="text-xl font-bold text-foreground">{staffMeals.dinner || 0}</p>
+                <div className="bg-muted rounded-xl p-4 text-center">
+                  <p className="text-sm font-semibold text-muted-foreground">Dinner</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{staffMeals.dinner || 0}</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between pt-2 border-t">
-                <span className="text-sm text-muted-foreground">Total Staff Meals</span>
-                <span className="text-lg font-bold text-primary">{staffTotal}</span>
+              <div className="flex items-center justify-between pt-4 border-t">
+                <span className="text-base font-semibold text-muted-foreground">Total Staff Meals</span>
+                <span className="text-2xl font-bold text-primary">{staffTotal}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge className={statusConfig[staffMeals.status]?.className || "bg-muted text-muted-foreground"}>
+              <div className="flex items-center gap-2 mt-2">
+                <Badge className={cn("text-base px-3 py-1", statusConfig[staffMeals.status]?.className || "bg-muted text-muted-foreground")}>
                   {statusConfig[staffMeals.status]?.label || staffMeals.status}
                 </Badge>
-
-                {/*  comment out cycle name */}
-                
-                {/* {staffMeals.staffCycle && (
-                  <Badge className="bg-badge-hospital text-primary-foreground">
-                    Cycle: {staffMeals.staffCycle}
-                  </Badge>
-                )} */}
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground py-4 text-center">
+            <p className="text-base text-muted-foreground py-6 text-center">
               No staff meals submitted for this date.
             </p>
           )}
@@ -181,64 +177,59 @@ const CensusSubmissions = () => {
       {/* Ward Submissions Table */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-label font-semibold">Ward Submissions</CardTitle>
+          <CardTitle className="text-heading-sm">Ward Submissions</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="text-label font-semibold p-3">Ward</TableHead>
-                <TableHead className="text-label font-semibold p-3 text-center">
-                  Total Patients
-                </TableHead>
-                <TableHead className="text-label font-semibold p-3 text-center hidden sm:table-cell">
-                  Status
-                </TableHead>
-                <TableHead className="text-label font-semibold p-3 text-right hidden sm:table-cell">
-                  Submitted At
-                </TableHead>
+              {/* 👇 Upgraded to text-lg and text-center */}
+              <TableRow className="text-lg bg-muted/30">
+                <TableHead className="font-semibold text-foreground text-center py-4">Ward</TableHead>
+                <TableHead className="font-semibold text-foreground text-center py-4">Total Patients</TableHead>
+                <TableHead className="font-semibold text-foreground text-center py-4 hidden sm:table-cell">Status</TableHead>
+                <TableHead className="font-semibold text-foreground text-center py-4 hidden sm:table-cell">Submitted At</TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-12 text-lg text-muted-foreground">
                     Loading submissions...
                   </TableCell>
                 </TableRow>
               )}
 
-              {!loading && visibleSubmissions.length === 0 && (
+              {!loading && sortedSubmissions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-12 text-lg text-muted-foreground">
                     No ward submissions found for this date.
                   </TableCell>
                 </TableRow>
               )}
 
               {!loading &&
-                visibleSubmissions.map((entry) => (
+                sortedSubmissions.map((entry) => (
                   <TableRow
                     key={entry.id}
-                    className="cursor-pointer hover:bg-muted/30 transition-colors"
+                    className="text-lg cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => setSelectedEntry(entry)}
                   >
-                    <TableCell className="p-3 font-medium text-body">
+                    <TableCell className="py-5 font-medium text-center">
                       {entry.wardName}
                     </TableCell>
 
-                    <TableCell className="p-3 text-center text-body">
+                    <TableCell className="py-5 text-center font-bold">
                       {entry.totalPatients}
                     </TableCell>
 
-                    <TableCell className="p-3 text-center hidden sm:table-cell">
-                      <Badge className={statusConfig[entry.status]?.className || "bg-muted text-muted-foreground"}>
+                    <TableCell className="py-5 text-center hidden sm:table-cell">
+                      <Badge className={cn("text-base px-3 py-1", statusConfig[entry.status]?.className || "bg-muted text-muted-foreground")}>
                         {statusConfig[entry.status]?.label || entry.status}
                       </Badge>
                     </TableCell>
 
-                    <TableCell className="p-3 text-right text-label text-muted-foreground hidden sm:table-cell">
+                    <TableCell className="py-5 text-center text-muted-foreground hidden sm:table-cell">
                       {entry.submittedAt
                         ? new Date(entry.submittedAt).toLocaleTimeString("en-LK", {
                             hour: "2-digit",
@@ -259,15 +250,15 @@ const CensusSubmissions = () => {
           {selectedEntry && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
+                <DialogTitle className="text-2xl flex items-center gap-3">
                   {selectedEntry.wardName}
-                  <Badge className={statusConfig[selectedEntry.status]?.className || "bg-muted text-muted-foreground"}>
+                  <Badge className={cn("text-base px-3 py-1", statusConfig[selectedEntry.status]?.className || "bg-muted text-muted-foreground")}>
                     {statusConfig[selectedEntry.status]?.label || selectedEntry.status}
                   </Badge>
                 </DialogTitle>
 
-                <p className="text-label text-muted-foreground flex items-center gap-1.5">
-                  <CalendarDays className="h-3.5 w-3.5" />
+                <p className="text-base text-muted-foreground flex items-center gap-2 mt-1">
+                  <CalendarDays className="h-4 w-4" />
                   {new Date(selectedEntry.date).toLocaleDateString("en-LK", {
                     year: "numeric",
                     month: "long",
@@ -276,20 +267,20 @@ const CensusSubmissions = () => {
                 </p>
               </DialogHeader>
 
-              <div className="space-y-4 mt-2">
+              <div className="space-y-6 mt-4">
                 {/* Patient Diets */}
                 <div>
-                  <h4 className="text-label font-semibold mb-2">Patient Diets</h4>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                  <h4 className="text-lg font-semibold mb-3 border-b pb-2">Patient Diets</h4>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                     {Object.entries(selectedEntry.diets || {}).map(([key, value]) => (
-                      <div key={key} className="flex justify-between text-body py-1">
+                      <div key={key} className="flex justify-between text-lg py-1">
                         <span className="text-muted-foreground">{getDietLabel(key)}</span>
-                        <span className="font-medium">{value || 0}</span>
+                        <span className="font-semibold">{value || 0}</span>
                       </div>
                     ))}
                   </div>
 
-                  <div className="flex justify-between pt-2 mt-2 border-t text-body font-bold">
+                  <div className="flex justify-between pt-3 mt-4 border-t text-xl font-bold">
                     <span>Total</span>
                     <span className="text-primary">{selectedEntry.totalPatients}</span>
                   </div>
@@ -298,14 +289,14 @@ const CensusSubmissions = () => {
                 {/* Special Requests */}
                 {Object.values(selectedEntry.special || {}).some((v) => Number(v) > 0) && (
                   <div>
-                    <h4 className="text-label font-semibold mb-2">Special Requests</h4>
-                    <div className="space-y-1">
+                    <h4 className="text-lg font-semibold mb-3 border-b pb-2">Special Requests</h4>
+                    <div className="space-y-2">
                       {Object.entries(selectedEntry.special || {})
                         .filter(([, v]) => Number(v) > 0)
                         .map(([key, value]) => (
-                          <div key={key} className="flex justify-between text-body">
+                          <div key={key} className="flex justify-between text-lg">
                             <span className="text-muted-foreground">{getSpecialLabel(key)}</span>
-                            <span className="font-medium">{value}</span>
+                            <span className="font-semibold">{value}</span>
                           </div>
                         ))}
                     </div>
@@ -315,14 +306,14 @@ const CensusSubmissions = () => {
                 {/* Extra Items */}
                 {Object.values(selectedEntry.extras || {}).some((v) => Number(v) > 0) && (
                   <div>
-                    <h4 className="text-label font-semibold mb-2">Extra Items</h4>
-                    <div className="space-y-1">
+                    <h4 className="text-lg font-semibold mb-3 border-b pb-2">Extra Items</h4>
+                    <div className="space-y-2">
                       {Object.entries(selectedEntry.extras || {})
                         .filter(([, v]) => Number(v) > 0)
                         .map(([name, qty]) => (
-                          <div key={name} className="flex justify-between text-body">
+                          <div key={name} className="flex justify-between text-lg">
                             <span className="text-muted-foreground">{name}</span>
-                            <span className="font-medium">{qty}</span>
+                            <span className="font-semibold">{qty}</span>
                           </div>
                         ))}
                     </div>
@@ -332,12 +323,12 @@ const CensusSubmissions = () => {
                 {/* Custom Extra Items */}
                 {selectedEntry.customExtras?.length > 0 && (
                   <div>
-                    <h4 className="text-label font-semibold mb-2">Custom Extra Items</h4>
-                    <div className="space-y-1">
+                    <h4 className="text-lg font-semibold mb-3 border-b pb-2">Custom Extra Items</h4>
+                    <div className="space-y-2">
                       {selectedEntry.customExtras.map((item, index) => (
-                        <div key={index} className="flex justify-between text-body">
+                        <div key={index} className="flex justify-between text-lg">
                           <span className="text-muted-foreground">{item.name}</span>
-                          <span className="font-medium">
+                          <span className="font-semibold">
                             {item.quantity} {item.unit}
                           </span>
                         </div>
