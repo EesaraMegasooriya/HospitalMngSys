@@ -176,6 +176,14 @@ function App() {
                   </Page>
                 }
               />
+              <Route
+                path="/accountant/reports"
+                element={
+                  <Page>
+                    <IssueReports />
+                  </Page>
+                }
+              />
 
               {/* Kitchen */}
               <Route
@@ -191,14 +199,6 @@ function App() {
                 element={
                   <Page>
                     <DeliveryReceiving />
-                  </Page>
-                }
-              />
-              <Route
-                path="/kitchen/reports"
-                element={
-                  <Page>
-                    <IssueReports />
                   </Page>
                 }
               />
@@ -245,7 +245,7 @@ function App() {
                 }
               />
               <Route
-                path="/admin/diet-cycles"
+                path="/admin/diet-cycle"
                 element={
                   <Page>
                     <AdminDietCycles />

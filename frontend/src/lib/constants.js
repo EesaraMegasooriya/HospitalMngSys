@@ -43,15 +43,6 @@ export const ROLE_BADGE_COLORS = {
   KITCHEN: "bg-badge-kitchen",
 };
 
-export const MOCK_USERS = [
-  { id: "1", name: "Kamal Perera", role: "SYSTEM_ADMIN", username: "admin" },
-  { id: "2", name: "Nimal Silva", role: "HOSPITAL_ADMIN", username: "hadmin" },
-  { id: "3", name: "Sita Fernando", role: "DIET_CLERK", username: "diet" },
-  { id: "4", name: "Ruwan Jayawardena", role: "SUBJECT_CLERK", username: "subject" },
-  { id: "5", name: "Kumari Bandara", role: "ACCOUNTANT", username: "accountant" },
-  { id: "6", name: "Sunil Rathnayake", role: "KITCHEN", username: "kitchen" },
-];
-
 export const NAV_ITEMS = {
   DIET_CLERK: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -74,6 +65,7 @@ export const NAV_ITEMS = {
     { title: "Approval Details", url: "/approvals/details", icon: FileText },
     { title: "Invoices", url: "/invoices", icon: Receipt },
     { title: "Invoice Details", url: "/invoices/details", icon: FileText },
+    { title: "Issue Reports", url: "/accountant/reports", icon: AlertTriangle },
   ],
 
   SYSTEM_ADMIN: [
@@ -96,7 +88,6 @@ export const NAV_ITEMS = {
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Cook Sheet", url: "/kitchen", icon: ChefHat },
     { title: "Delivery Receiving", url: "/kitchen/receiving", icon: Truck },
-    { title: "Issue Reports", url: "/kitchen/reports", icon: AlertTriangle },
   ],
 };
 
@@ -169,6 +160,13 @@ export const DASHBOARD_CARDS = {
       url: "/reports",
       color: "text-primary",
     },
+    {
+      title: "Issue Reports",
+      description: "View delivery issue history",
+      icon: AlertTriangle,
+      url: "/accountant/reports",
+      color: "text-destructive",
+    },
   ],
   KITCHEN: [
     {
@@ -184,13 +182,6 @@ export const DASHBOARD_CARDS = {
       icon: Truck,
       url: "/kitchen/receiving",
       color: "text-primary",
-    },
-    {
-      title: "Issue Reports",
-      description: "View delivery issue history",
-      icon: AlertTriangle,
-      url: "/kitchen/reports",
-      color: "text-warning",
     },
   ],
   HOSPITAL_ADMIN: [
