@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit2, Ban, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const API_BASE = "http://localhost:5050/api/diet-types";
+const API_BASE = "https://hospital-meal-management.onrender.com/api/api/diet-types";
 
 const getAuthHeaders = () => ({
   "Content-Type": "application/json",

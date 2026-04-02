@@ -8,7 +8,7 @@ import {
 import { TrendingUp, PieChart as PieChartIcon, Activity, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const API_BASE = "http://localhost:5050/api";
+const API_BASE = "https://hospital-meal-management.onrender.com/api";
 
 const getAuthHeaders = () => ({
   "Content-Type": "application/json",

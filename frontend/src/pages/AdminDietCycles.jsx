@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 // 👇 Removed Trash2 and added CheckCircle and Ban for better UX
 import { Plus, Edit2, Ban, CheckCircle } from "lucide-react";
 
-const API_BASE = "http://localhost:5050/api/diet-cycles";
+const API_BASE = "https://hospital-meal-management.onrender.com/api/diet-cycles";
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");

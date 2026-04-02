@@ -26,7 +26,7 @@ import {
 import { Download, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const API_BASE = "http://localhost:5050/api/audit";
+const API_BASE = "https://hospital-meal-management.onrender.com/api/audit";
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");
