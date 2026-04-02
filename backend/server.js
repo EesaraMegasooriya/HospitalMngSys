@@ -1,5 +1,5 @@
 process.env.TZ = "Asia/Colombo";
-require("dotenv").config();
+const dotenv = require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const pool = require("./config/db");
@@ -22,6 +22,7 @@ const poRoutes = require("./routes/poRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
 const itemsRoutes = require("./routes/itemsRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const pool = require("./config/db");
 
 const app = express();
 
@@ -35,8 +36,12 @@ app.use(
   })
 );
 
+
+
 app.use(express.json());
 app.use(auditRequestMiddleware);
+
+
 
 // routes
 app.use("/api/auth", authRoutes);

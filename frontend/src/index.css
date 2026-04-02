@@ -41,7 +41,7 @@
     --radius: 0.625rem;
 
     /* --- Navigation (Sidebar) --- */
-    --sidebar-background: 160 35% 18%;
+    --sidebar-background: 162 90% 15%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 142 72% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -59,8 +59,8 @@
     --badge-subject: 25 95% 53%;
     --badge-accountant: 0 72% 51%;
     --badge-kitchen: 38 92% 50%;
-    --info-bar: 142 76% 94%;
-    --info-bar-foreground: 160 35% 18%;
+    --info-bar: 74 74% 85%;
+    --info-bar-foreground: 74 50% 15%;
   }
 
   .dark {
