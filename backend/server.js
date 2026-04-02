@@ -22,7 +22,6 @@ const poRoutes = require("./routes/poRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
 const itemsRoutes = require("./routes/itemsRoutes");
 const reportRoutes = require("./routes/reportRoutes");
-const pool = require("./config/db");
 
 const app = express();
 
