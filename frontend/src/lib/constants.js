@@ -55,22 +55,23 @@ export const NAV_ITEMS = {
     { title: "Calculations", url: "/calculations", icon: Calculator },
     { title: "Calculation Results", url: "/calculations/results", icon: FileText },
     { title: "Orders", url: "/orders", icon: ShoppingCart },
-    { title: "Order Details", url: "/orders/details", icon: FileText },
+    
   ],
 
   ACCOUNTANT: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Account Price Management", url: "/accountant/prices", icon: DollarSign },
     { title: "Approvals", url: "/approvals", icon: CheckSquare },
-    { title: "Approval Details", url: "/approvals/details", icon: FileText },
     { title: "Invoices", url: "/invoices", icon: Receipt },
-    { title: "Invoice Details", url: "/invoices/details", icon: FileText },
     { title: "Issue Reports", url: "/accountant/reports", icon: AlertTriangle },
   ],
 
   SYSTEM_ADMIN: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "System Users", url: "/system/users", icon: Users },
+    { title: "Audit Logs", url: "/system/audit", icon: History },
+    { title: "Settings", url: "/system/settings", icon: Settings },
+    
   ],
 
   HOSPITAL_ADMIN: [
@@ -79,9 +80,9 @@ export const NAV_ITEMS = {
     { title: "Admin Diet Cycle", url: "/admin/diet-cycle", icon: ListTree },
     { title: "Admin Diet Type", url: "/admin/diet-types", icon: Utensils },
     { title: "Admin Items", url: "/admin/items", icon: Package },
-    { title: "Admin Notification", url: "/admin/notifications", icon: Bell },
     { title: "Admin Recipes", url: "/admin/recipes", icon: BookOpen },
     { title: "Admin Wards", url: "/admin/wards", icon: Building2 },
+    { title: "Issue Reports", url: "/admin/reports", icon: AlertTriangle },
   ],
 
   KITCHEN: [
@@ -214,10 +215,10 @@ export const DASHBOARD_CARDS = {
       color: "text-warning",
     },
     {
-      title: "Notifications",
-      description: "View quality and delivery alerts",
-      icon: Bell,
-      url: "/admin/notifications",
+      title: "Issue Reports",
+      description: "View delivery issue history",
+      icon: AlertTriangle,
+      url: "/admin/reports",
       color: "text-destructive",
     },
   ],

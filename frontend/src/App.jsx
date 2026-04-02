@@ -268,6 +268,14 @@ function App() {
                   </Page>
                 }
               />
+              <Route
+                path="/admin/reports"
+                element={
+                  <Page>
+                    <IssueReports />
+                  </Page>
+                }
+              />
 
               {/* System Admin */}
               <Route

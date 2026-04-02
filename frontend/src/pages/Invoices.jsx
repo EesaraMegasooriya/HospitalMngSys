@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Eye, Printer, Loader2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const API_BASE = "http://localhost:5050/api";
 
@@ -24,13 +25,11 @@ const Invoices = () => {
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
-        // Fetch ALL orders
         const res = await fetch(`${API_BASE}/orders`, { headers: getAuthHeaders() });
         const data = await res.json();
 
         if (!res.ok) throw new Error(data.message || "Failed to load invoices");
 
-        // Filter to keep a permanent history of anything that was approved and sent to the supplier
         const history = (data.orders || []).filter(order => 
           ['approved', 'partially_delivered', 'delivered'].includes(order.status)
         );
@@ -46,77 +45,103 @@ const Invoices = () => {
     fetchInvoices();
   }, [toast]);
 
+  // 👇 Auto-Sort Invoices: Newest dates first, then descending by Bill Number
+  const sortedInvoices = [...invoices].sort((a, b) => {
+    const dateA = a.poDate || a.date;
+    const dateB = b.poDate || b.date;
+    const dateDiff = new Date(dateB) - new Date(dateA);
+    if (dateDiff !== 0) return dateDiff;
+    return (b.billNumber || "").toString().localeCompare((a.billNumber || "").toString());
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-3 text-muted-foreground">Loading invoice history...</span>
+        <span className="ml-3 text-lg text-muted-foreground">Loading invoice history...</span>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-heading-md font-bold text-foreground flex items-center gap-2">
-          <FileText className="h-6 w-6 text-primary" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-heading-lg font-bold text-foreground flex items-center gap-3">
+          <FileText className="h-7 w-7 text-primary" />
           Supplier Invoice History
         </h1>
       </div>
       
       <Card>
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 overflow-x-auto px-0 sm:px-6">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Bill #</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="hidden md:table-cell">Supplier</TableHead>
-                <TableHead className="text-right">Grand Total (Rs)</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden sm:table-cell">Approved By</TableHead>
-                <TableHead>Actions</TableHead>
+              {/* 👇 Upgraded Header Typography & Alignment */}
+              <TableRow className="text-lg bg-muted/30">
+                <TableHead className="font-semibold text-foreground text-center py-4">Bill #</TableHead>
+                <TableHead className="font-semibold text-foreground text-center py-4">Date</TableHead>
+                <TableHead className="hidden md:table-cell font-semibold text-foreground text-center py-4">Supplier</TableHead>
+                <TableHead className="font-semibold text-foreground text-center py-4">Grand Total (Rs)</TableHead>
+                <TableHead className="font-semibold text-foreground text-center py-4">Status</TableHead>
+                <TableHead className="hidden sm:table-cell font-semibold text-foreground text-center py-4">Approved By</TableHead>
+                <TableHead className="font-semibold text-foreground text-center py-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoices.map((inv) => {
-                // Use revised total if the accountant changed prices, otherwise original
+              {/* 👇 Mapped over sortedInvoices with upgraded Row Typography & Alignment */}
+              {sortedInvoices.map((inv) => {
                 const finalTotal = inv.revisedTotal !== null ? inv.revisedTotal : inv.originalTotal;
 
                 return (
-                  <TableRow key={inv.id}>
-                    <TableCell className="font-medium">{inv.billNumber}</TableCell>
-                    <TableCell>{inv.poDate || inv.date}</TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground max-w-[200px] truncate">
+                  <TableRow 
+                    key={inv.id} 
+                    className="text-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/invoices/${inv.id}`)}
+                  >
+                    <TableCell className="font-bold text-center py-5">{inv.billNumber}</TableCell>
+                    <TableCell className="text-center py-5 text-muted-foreground">{inv.poDate || inv.date}</TableCell>
+                    <TableCell className="hidden md:table-cell text-center text-muted-foreground max-w-[200px] truncate py-5">
                       Manager, MPCS Ltd, Gampaha
                     </TableCell>
-                    <TableCell className="text-right font-semibold">
+                    <TableCell className="text-center font-bold text-primary py-5">
                       Rs. {Number(finalTotal).toLocaleString()}
                     </TableCell>
-                    <TableCell>
-                      {inv.status === 'approved' && <Badge variant="outline" className="text-blue-600 border-blue-600">Sent to Supplier</Badge>}
-                      {inv.status === 'delivered' && <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">Delivered</Badge>}
-                      {inv.status === 'partially_delivered' && <Badge variant="outline" className="text-warning border-warning">Partial Delivery</Badge>}
+                    <TableCell className="text-center py-5">
+                      {inv.status === 'approved' && <Badge variant="outline" className="text-blue-600 border-blue-600 text-base px-3 py-1 bg-blue-50/50">Sent to Supplier</Badge>}
+                      {inv.status === 'delivered' && <Badge variant="outline" className="text-success border-success bg-success/10 text-base px-3 py-1">Delivered</Badge>}
+                      {inv.status === 'partially_delivered' && <Badge variant="outline" className="text-warning border-warning bg-warning/10 text-base px-3 py-1">Partial Delivery</Badge>}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+                    <TableCell className="hidden sm:table-cell text-center text-muted-foreground py-5">
                       {inv.reviewedByName || "Accountant"}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => navigate(`/invoices/${inv.id}`)} className="touch-target">
-                          <Eye className="h-4 w-4" />
+                    <TableCell className="py-5">
+                      <div className="flex justify-center gap-2">
+                        <Button 
+                          title="View Invoice"
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${inv.id}`); }} 
+                          className="touch-target"
+                        >
+                          <Eye className="h-5 w-5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="touch-target" onClick={() => navigate(`/invoices/${inv.id}`)}>
-                          <Printer className="h-4 w-4" />
+                        <Button 
+                          title="Print Invoice"
+                          variant="ghost" 
+                          size="icon" 
+                          className="touch-target" 
+                          onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${inv.id}`); }}
+                        >
+                          <Printer className="h-5 w-5" />
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 );
               })}
-              {invoices.length === 0 && (
+              {sortedInvoices.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-lg text-muted-foreground py-12">
                     No generated invoices found. Approve a Purchase Order first.
                   </TableCell>
                 </TableRow>
@@ -129,4 +154,4 @@ const Invoices = () => {
   );
 };
 
-export default Invoices; 
+export default Invoices;
