@@ -16,11 +16,11 @@ import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, Chevrons
 import { cn } from "@/lib/utils";
 import { getTodaySL } from "@/lib/date-utils";
 
-const API_BASE = "http://localhost:5050/api/census";
-const WARDS_API = "http://localhost:5050/api/wards";
-const ITEMS_API = "http://localhost:5050/api/items";
-const DIET_TYPES_API = "http://localhost:5050/api/diet-types";
-const RECIPES_API = "http://localhost:5050/api/recipes";
+const API_BASE = "https://hospital-meal-management.onrender.com/api/census";
+const WARDS_API = "https://hospital-meal-management.onrender.com/api/wards";
+const ITEMS_API = "https://hospital-meal-management.onrender.com/api/items";
+const DIET_TYPES_API = "https://hospital-meal-management.onrender.com/api/diet-types";
+const RECIPES_API = "https://hospital-meal-management.onrender.com/api/recipes";
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");

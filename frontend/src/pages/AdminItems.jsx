@@ -17,7 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Edit2, FolderPlus } from "lucide-react";
 
-const API_BASE = "http://localhost:5050/api";
+const API_BASE = "https://hospital-meal-management.onrender.com/api";
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");

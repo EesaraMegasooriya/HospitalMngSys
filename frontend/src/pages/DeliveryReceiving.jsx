@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, AlertTriangle, Loader2, Truck } from "lucide-react";
 import { getTodaySL } from "@/lib/date-utils";
 
-const API_BASE = "http://localhost:5050/api";
+const API_BASE = "https://hospital-meal-management.onrender.com/api";
 
 const QUALITY_OPTIONS = [
   { value: "good", label: "✅ Good" },

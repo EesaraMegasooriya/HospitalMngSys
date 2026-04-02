@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getTodaySL } from "@/lib/date-utils";
 import { CalendarDays, Leaf, Drumstick, Save, Loader2 } from "lucide-react";
 
-const API_BASE = "http://localhost:5050/api";
+const API_BASE = "https://hospital-meal-management.onrender.com/api";
 
 const getAuthHeaders = () => ({
   "Content-Type": "application/json",

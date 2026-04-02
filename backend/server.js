@@ -28,7 +28,7 @@ const app = express();
 /* ✅ CORS (do NOT use app.options("*") / "/*" on your setup) */
 app.use(
   cors({
-    origin: "http://localhost:8080",
+    origin: ["http://localhost:8080", "https://hospital-meal-management.onrender.com"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "x-request-id", "x-correlation-id"],
