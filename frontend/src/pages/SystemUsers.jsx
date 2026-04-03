@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 // 👇 Added UserCheck here for the activation icon
 import { Plus, Edit2, KeyRound, UserX, UserCheck } from "lucide-react";
 
-const API_BASE = "https://hospital-meal-management.onrender.com/api/users";
+const API_BASE = `${import.meta.env.VITE_API_BASE || "http://localhost:5050/api"}/users`;
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");

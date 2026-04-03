@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getTodaySL } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
-const API_BASE = "https://hospital-meal-management.onrender.com/api/census";
+const API_BASE = `${import.meta.env.VITE_API_BASE || "http://localhost:5050/api"}/census`;
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");
@@ -77,12 +77,12 @@ const CensusSubmissions = () => {
   useEffect(() => {
     fetchSubmissions(filterDate);
 
-    fetch("https://hospital-meal-management.onrender.com/api/diet-types", { headers: getAuthHeaders() })
+    fetch(`${import.meta.env.VITE_API_BASE || "http://localhost:5050/api"}/diet-types`, { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((data) => setDietTypes(data.dietTypes || []))
       .catch(() => {});
 
-    fetch("https://hospital-meal-management.onrender.com/api/recipes", { headers: getAuthHeaders() })
+    fetch(`${import.meta.env.VITE_API_BASE || "http://localhost:5050/api"}/recipes`, { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((data) => setRecipes(data.recipes || []))
       .catch(() => {});

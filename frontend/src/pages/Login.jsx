@@ -49,7 +49,7 @@ function Login() {
 
     try {
       setStatus("loading");
-      const res = await axios.post("https://hospital-meal-management.onrender.com/api/auth/login", form);
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE || "http://localhost:5050/api"}/auth/login`, form);
       const { token, user } = res.data;
 
       sessionStorage.setItem("token", token);
