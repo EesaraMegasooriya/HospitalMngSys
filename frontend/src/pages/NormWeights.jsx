@@ -10,9 +10,10 @@ import { Save } from "lucide-react";
 
 const MEALS = ["breakfast", "lunch", "dinner"];
 
-const API_ITEMS = "https://hospital-meal-management.onrender.com/api/items";
-const API_WEIGHTS = "https://hospital-meal-management.onrender.com/api/norm-weights";
-const API_DIET_TYPES = "https://hospital-meal-management.onrender.com/api/diet-types"; // New fetch!
+const API_BASE = `${import.meta.env.VITE_API_BASE || "http://localhost:5050/api"}`;
+const API_ITEMS = `${API_BASE}/items`;
+const API_WEIGHTS = `${API_BASE}/norm-weights`;
+const API_DIET_TYPES = `${API_BASE}/diet-types`; // New fetch!
 
 const getAuthHeaders = () => ({
   "Content-Type": "application/json",

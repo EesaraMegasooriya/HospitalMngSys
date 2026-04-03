@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { getTodaySL } from "@/lib/date-utils";
 
-const API_BASE = "https://hospital-meal-management.onrender.com/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5050/api";
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");
