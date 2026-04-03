@@ -25,6 +25,11 @@ function Login() {
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
   const [status, setStatus] = useState("idle"); // idle | loading | success
+  
+  // New Password State
+  const [needsNewPassword, setNeedsNewPassword] = useState(false);
+  const [tempUserId, setTempUserId] = useState(null);
+  const [newPassForm, setNewPassForm] = useState({ newPassword: "", confirmPassword: "" });
 
   const validate = () => {
     const e = {};
@@ -49,7 +54,17 @@ function Login() {
 
     try {
       setStatus("loading");
-      const res = await axios.post("https://hospital-meal-management.onrender.com/api/auth/login", form);
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE || "http://localhost:5050/api"}/auth/login`, form);
+      
+      // Intercept if they need to change their password
+      if (res.data.requirePasswordChange) {
+        setNeedsNewPassword(true);
+        setTempUserId(res.data.userId);
+        setStatus("idle");
+        setErrors({ general: res.data.message });
+        return; 
+      }
+
       const { token, user } = res.data;
 
       sessionStorage.setItem("token", token);
@@ -71,10 +86,39 @@ function Login() {
     }
   };
 
+  // Submit handler for the new password
+  const handleNewPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!newPassForm.newPassword || newPassForm.newPassword.length < 6) {
+      return setErrors({ general: "Password must be at least 6 characters." });
+    }
+    if (newPassForm.newPassword !== newPassForm.confirmPassword) {
+      return setErrors({ general: "Passwords do not match!" });
+    }
+
+    try {
+      setStatus("loading");
+      await axios.post(`${import.meta.env.VITE_API_BASE || "http://localhost:5050/api"}/auth/set-new-password`, {
+        userId: tempUserId,
+        newPassword: newPassForm.newPassword
+      });
+
+      // Success! Reset everything back to the normal login screen
+      setStatus("idle");
+      setErrors({ general: "Success! Please log in with your new password." });
+      setNeedsNewPassword(false);
+      setForm({ ...form, password: "" }); // Clear the old password
+      setNewPassForm({ newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      setStatus("idle");
+      setErrors({ general: err.response?.data?.message || "Failed to update password." });
+    }
+  };
+
   const fieldClass = (field) =>
     `w-full pl-11 pr-4 py-[13px] text-[15px] bg-white rounded-xl border outline-none
      transition-all duration-200 placeholder:text-gray-1000 text-gray-1000
-     ${errors[field]
+     ${errors[field] || errors.general
       ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
       : "border-gray-400 focus:border-[#2d6a4e] focus:ring-2 focus:ring-[#2d6a4e]/10"
     }`;
@@ -84,25 +128,16 @@ function Login() {
 
       {/* ── LEFT PANEL ── */}
       <div className="hidden lg:block lg:w-[50%] relative overflow-hidden">
-
-        {/* Hospital background image */}
         <img
           src={HospitalImg}
           alt="District General Hospital Gampaha"
           className="absolute inset-0 w-full h-full object-cover object-center"
         />
-
-        {/* Multi-layer overlay for depth + text legibility */}
-        {/* Bottom-up dark fade */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#071a10]/95 via-[#0d2b1f]/60 to-transparent" />
-        {/* Left-to-right green tint */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#0a2218]/50 to-transparent" />
-        {/* Subtle green color cast */}
         <div className="absolute inset-0 bg-[#0f3320]/25" />
 
-        {/* Content sits on top of all overlays */}
         <div className="absolute inset-0 flex flex-col justify-between p-10">
-
           {/* ── TOP: Logo ── */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/12 border border-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0">
@@ -120,7 +155,6 @@ function Login() {
 
           {/* ── BOTTOM: Main content area ── */}
           <div>
-            {/* Live badge */}
             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md rounded-full px-3.5 py-1.5 mb-5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse block flex-shrink-0" />
               <span className="text-white/75 text-[11px] font-semibold uppercase tracking-[2px]">
@@ -128,7 +162,6 @@ function Login() {
               </span>
             </div>
 
-            {/* Headline */}
             <h1 className="text-white text-[2.6rem] font-bold leading-[1.15] mb-4 drop-shadow-md">
               Meal Management
               <br />
@@ -139,7 +172,6 @@ function Login() {
               A unified platform coordinating patient nutrition across wards, dietitians, and kitchen teams.
             </p>
 
-            {/* Feature list */}
             <div className="flex flex-col gap-3 mb-8">
               {[
                 { icon: <Utensils className="w-3.5 h-3.5" strokeWidth={1.8} />, label: "Real-time meal tracking per ward" },
@@ -154,7 +186,6 @@ function Login() {
                 </div>
               ))}
             </div>
-
             
             <p className="text-white/20 text-[11px] mt-5">
                DGH Gampaha &nbsp;·&nbsp; 
@@ -181,144 +212,182 @@ function Login() {
               Staff Portal
             </p>
             <h2 className="text-gray-900 text-[1.9rem] font-bold mb-2 leading-tight">
-              Welcome 
+              {needsNewPassword ? "Set New Password" : "Welcome"}
             </h2>
             <p className="text-gray-400 text-[14.5px] leading-relaxed">
-              Sign in to access the meal management dashboard.
+              {needsNewPassword 
+                ? "Please secure your account with a new password." 
+                : "Sign in to access the meal management dashboard."}
             </p>
           </div>
 
           {/* Error banner */}
           {errors.general && (
-            <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5">
-              <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" strokeWidth={2} />
-              <p className="text-red-600 text-[13.5px] leading-snug">{errors.general}</p>
+            <div className={`flex items-start gap-2.5 border rounded-xl px-4 py-3 mb-5 
+              ${errors.general.includes("Success") ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}
+            >
+              {errors.general.includes("Success") 
+                ? <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" strokeWidth={2} />
+                : <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" strokeWidth={2} />
+              }
+              <p className={`text-[13.5px] leading-snug ${errors.general.includes("Success") ? "text-emerald-700" : "text-red-600"}`}>
+                {errors.general}
+              </p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
-
-            {/* Email */}
-            <div>
-              <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-                Email address
-              </label>
-              <div className="relative">
-                <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200
-                  ${errors.email ? "text-red-400" : form.email ? "text-[#2d6a4e]" : "text-gray-600"}`}>
-                  <User className="w-4 h-4" strokeWidth={1.8} />
-                </span>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange("email")}
-                  placeholder="you@hospital.lk"
-                  autoComplete="username"
-                  className={fieldClass("email")}
-                />
+          {/* CONDITIONAL RENDERING OF FORMS */}
+          {!needsNewPassword ? (
+            
+            /* ── EXISTING LOGIN FORM ── */
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Email address</label>
+                <div className="relative">
+                  <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200
+                    ${errors.email ? "text-red-400" : form.email ? "text-[#2d6a4e]" : "text-gray-600"}`}>
+                    <User className="w-4 h-4" strokeWidth={1.8} />
+                  </span>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={handleChange("email")}
+                    placeholder="you@hospital.lk"
+                    autoComplete="username"
+                    className={fieldClass("email")}
+                  />
+                </div>
+                {errors.email && <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>}
               </div>
-              {errors.email && (
-                <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>
-              )}
-            </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200
-                  ${errors.password ? "text-red-400" : form.password ? "text-[#2d6a4e]" : "text-gray-600"}`}>
-                  <Lock className="w-4 h-4" strokeWidth={1.8} />
-                </span>
-                <input
-                  type={showPass ? "text" : "password"}
-                  value={form.password}
-                  onChange={handleChange("password")}
-                  placeholder="Enter your password"
-                  autoComplete="current-password"
-                  className={`${fieldClass("password")} pr-11`}
-                />
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Password</label>
+                <div className="relative">
+                  <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200
+                    ${errors.password ? "text-red-400" : form.password ? "text-[#2d6a4e]" : "text-gray-600"}`}>
+                    <Lock className="w-4 h-4" strokeWidth={1.8} />
+                  </span>
+                  <input
+                    type={showPass ? "text" : "password"}
+                    value={form.password}
+                    onChange={handleChange("password")}
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                    className={`${fieldClass("password")} pr-11`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass((v) => !v)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#2d6a4e] transition-colors duration-200 p-0.5"
+                  >
+                    {showPass ? <EyeOff className="w-4 h-4" strokeWidth={1.8} /> : <Eye className="w-4 h-4" strokeWidth={1.8} />}
+                  </button>
+                </div>
+                {errors.password && <p className="mt-1.5 text-xs text-red-500">{errors.password}</p>}
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <div
+                    onClick={() => setRemember((v) => !v)}
+                    className={`w-[18px] h-[18px] rounded-md border-[1.5px] flex items-center justify-center transition-all duration-200 cursor-pointer flex-shrink-0
+                      ${remember ? "bg-[#2d6a4e] border-[#2d6a4e]" : "bg-white border-gray-600 hover:border-[#2d6a4e]"}`}
+                  >
+                    {remember && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                  </div>
+                  <span className="text-[13.5px] text-gray-600">Keep me signed in</span>
+                </label>
+                <button 
+    type="button" 
+    onClick={() => setErrors({ general: "To reset your password, please contact the System Administrator or IT Support. They will provide you with a temporary login." })}
+    className="text-[13.5px] font-semibold text-[#2d6a4e] hover:text-[#1a4030] transition-colors duration-200"
+  >
+    Forgot password?
+  </button>
+              </div>
+
+              <div className="pt-2">
                 <button
-                  type="button"
-                  onClick={() => setShowPass((v) => !v)}
-                  aria-label={showPass ? "Hide password" : "Show password"}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#2d6a4e] transition-colors duration-200 p-0.5"
+                  type="submit"
+                  disabled={status === "loading" || status === "success"}
+                  className={`w-full py-[13px] rounded-xl text-white font-semibold text-[15.5px]
+                    flex items-center justify-center gap-2 transition-all duration-200
+                    ${status === "success"
+                      ? "bg-emerald-600 cursor-default"
+                      : status === "loading"
+                        ? "bg-[#2d6a4e] opacity-70 cursor-wait"
+                        : "bg-[#2d6a4e] hover:bg-[#245a40] active:scale-[0.99] shadow-sm hover:shadow-lg hover:shadow-[#2d6a4e]/20"
+                    }`}
                 >
-                  {showPass
-                    ? <EyeOff className="w-4 h-4" strokeWidth={1.8} />
-                    : <Eye className="w-4 h-4" strokeWidth={1.8} />
-                  }
+                  {status === "loading" && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                  {status === "success" && <Check className="w-4 h-4" strokeWidth={2.5} />}
+                  {status === "loading" ? "Signing in…" : status === "success" ? "Welcome back!" : <><span>Sign In</span><ArrowRight className="w-4 h-4" strokeWidth={2} /></>}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1.5 text-xs text-red-500">{errors.password}</p>
-              )}
-            </div>
+            </form>
 
-            {/* Remember + Forgot */}
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <div
-                  onClick={() => setRemember((v) => !v)}
-                  className={`w-[18px] h-[18px] rounded-md border-[1.5px] flex items-center justify-center transition-all duration-200 cursor-pointer flex-shrink-0
-                    ${remember ? "bg-[#2d6a4e] border-[#2d6a4e]" : "bg-white border-gray-600 hover:border-[#2d6a4e]"}`}
-                >
-                  {remember && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+          ) : (
+
+            /* ── NEW PASSWORD FORM ── */
+            <form onSubmit={handleNewPasswordSubmit} noValidate className="space-y-4">
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">New Password</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600"><Lock className="w-4 h-4" /></span>
+                  <input
+                    type={showPass ? "text" : "password"}
+                    value={newPassForm.newPassword}
+                    onChange={(e) => setNewPassForm(p => ({ ...p, newPassword: e.target.value }))}
+                    className={`${fieldClass("password")} pr-11`}
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass((v) => !v)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#2d6a4e] transition-colors duration-200 p-0.5"
+                  >
+                    {showPass ? <EyeOff className="w-4 h-4" strokeWidth={1.8} /> : <Eye className="w-4 h-4" strokeWidth={1.8} />}
+                  </button>
                 </div>
-                <span className="text-[13.5px] text-gray-600">Keep me signed in</span>
-              </label>
+              </div>
+              
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Confirm New Password</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600"><Lock className="w-4 h-4" /></span>
+                  <input
+                    type={showPass ? "text" : "password"}
+                    value={newPassForm.confirmPassword}
+                    onChange={(e) => setNewPassForm(p => ({ ...p, confirmPassword: e.target.value }))}
+                    className={`${fieldClass("password")} pr-11`}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+              </div>
+              
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={status === "loading"}
+                  className="w-full py-[13px] rounded-xl text-white font-semibold text-[15.5px] bg-[#2d6a4e] hover:bg-[#245a40] transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  {status === "loading" && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                  {status === "loading" ? "Saving..." : "Save New Password"}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setNeedsNewPassword(false);
+                    setErrors({});
+                  }}
+                  className="w-full mt-3 py-2 text-[13px] text-gray-500 hover:text-gray-700 font-semibold transition-colors"
+                >
+                  Cancel and return to Login
+                </button>
+              </div>
+            </form>
+          )}
 
-              <button
-                type="button"
-                className="text-[13.5px] font-semibold text-[#2d6a4e] hover:text-[#1a4030] transition-colors duration-200"
-              >
-                Forgot password?
-              </button>
-            </div>
-
-            {/* Submit */}
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={status === "loading" || status === "success"}
-                className={`w-full py-[13px] rounded-xl text-white font-semibold text-[15.5px]
-                  flex items-center justify-center gap-2 transition-all duration-200
-                  ${status === "success"
-                    ? "bg-emerald-600 cursor-default"
-                    : status === "loading"
-                      ? "bg-[#2d6a4e] opacity-70 cursor-wait"
-                      : "bg-[#2d6a4e] hover:bg-[#245a40] active:scale-[0.99] shadow-sm hover:shadow-lg hover:shadow-[#2d6a4e]/20"
-                  }`}
-              >
-                {status === "loading" && (
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                )}
-                {status === "success" && <Check className="w-4 h-4" strokeWidth={2.5} />}
-                {status === "loading"
-                  ? "Signing in…"
-                  : status === "success"
-                    ? "Welcome back!"
-                    : <><span>Sign In</span><ArrowRight className="w-4 h-4" strokeWidth={2} /></>
-                }
-              </button>
-            </div>
-          </form>
-
-          {/* Footer */}
-          {/* <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-1.5 text-[13px] text-gray-400">
-            <Shield className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
-            <span>
-              Need access?{" "}
-              <a
-                href="#"
-                className="font-semibold text-[#2d6a4e] hover:text-[#1a4030] transition-colors duration-200"
-              >
-                Contact IT Support 
-              </a>
-            </span>
-          </div> */}
         </div>
       </div>
     </div>

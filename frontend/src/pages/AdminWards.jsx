@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit2, Ban, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const API_BASE = "https://hospital-meal-management.onrender.com/api/wards";
+const API_BASE = `${import.meta.env.VITE_API_BASE || "http://localhost:5050/api"}/wards`;
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");
