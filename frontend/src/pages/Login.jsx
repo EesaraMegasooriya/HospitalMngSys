@@ -252,7 +252,7 @@ function Login() {
                     type="email"
                     value={form.email}
                     onChange={handleChange("email")}
-                    placeholder="you@hospital.lk"
+                    placeholder="Enter Your Email"
                     autoComplete="username"
                     className={fieldClass("email")}
                   />
