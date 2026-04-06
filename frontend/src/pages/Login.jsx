@@ -196,7 +196,7 @@ function Login() {
 
       {/* ── RIGHT PANEL ── */}
       <div className="flex-1 flex items-center justify-center px-6 py-16 bg-transparent">
-        <div className="w-full max-w-[400px] bg-white/90 rounded-2xl shadow-xl p-10 backdrop-blur-md border border-[#d2e3db]">
+        <div className="w-full max-w-[480px] bg-white/90 rounded-2xl shadow-xl p-14 backdrop-blur-md border border-[#d2e3db] scale-105">
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2.5 mb-10">
