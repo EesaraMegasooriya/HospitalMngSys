@@ -124,14 +124,14 @@ function Login() {
     }`;
 
   return (
-    <div className="min-h-screen flex bg-[#f5f7f5]">
+    <div className="min-h-screen flex bg-[#f0f7f4]">
 
       {/* ── LEFT PANEL ── */}
       <div className="hidden lg:block lg:w-[50%] relative overflow-hidden">
         <img
           src={HospitalImg}
           alt="District General Hospital Gampaha"
-          className="absolute inset-0 w-full h-full object-cover object-center"
+          className="absolute inset-0 w-full h-full object-cover object-left"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#071a10]/95 via-[#0d2b1f]/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#0a2218]/50 to-transparent" />
@@ -195,8 +195,8 @@ function Login() {
       </div>
 
       {/* ── RIGHT PANEL ── */}
-      <div className="flex-1 flex items-center justify-center px-6 py-16 bg-[#f5f7f5]">
-        <div className="w-full max-w-[400px]">
+      <div className="flex-1 flex items-center justify-center px-6 py-16 bg-transparent">
+        <div className="w-full max-w-[400px] bg-white/90 rounded-2xl shadow-xl p-10 backdrop-blur-md border border-[#d2e3db]">
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2.5 mb-10">
