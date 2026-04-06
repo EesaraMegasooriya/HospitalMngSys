@@ -27,7 +27,6 @@ const getAuthHeaders = () => {
   };
 };
 
-// 👇 Upgraded to use rich theme colors and locked hover states
 const statusConfig = {
   not_started: { label: "Not Started", className: "bg-muted text-muted-foreground hover:bg-muted border-transparent font-medium" },
   draft: { label: "Draft", className: "bg-warning-bg text-warning hover:bg-warning-bg border-transparent font-medium" },
@@ -103,10 +102,10 @@ const CensusSubmissions = () => {
     return key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
   };
 
-  // 👇 Sort submissions alphabetically by Ward Name
+  // Sort submissions numerically by Ward Name
   const sortedSubmissions = useMemo(() => {
     return [...(submissions || [])].sort((a, b) => 
-      (a.wardName || "").localeCompare(b.wardName || "")
+      (a.wardName || "").localeCompare(b.wardName || "", undefined, { numeric: true, sensitivity: 'base' })
     );
   }, [submissions]);
 
@@ -121,7 +120,6 @@ const CensusSubmissions = () => {
 
         <div className="flex items-center gap-3">
           <Label className="text-base font-semibold shrink-0">Date:</Label>
-          {/* 👇 Bumped input size to h-12 text-base */}
           <Input
             type="date"
             value={filterDate}
@@ -131,7 +129,6 @@ const CensusSubmissions = () => {
         </div>
       </div>
 
-      {/* Staff Meals Card */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-heading-sm flex items-center gap-2">
@@ -174,7 +171,6 @@ const CensusSubmissions = () => {
         </CardContent>
       </Card>
 
-      {/* Ward Submissions Table */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-heading-sm">Ward Submissions</CardTitle>
@@ -182,7 +178,6 @@ const CensusSubmissions = () => {
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              {/* 👇 Upgraded to text-lg and text-center */}
               <TableRow className="text-lg bg-muted/30">
                 <TableHead className="font-semibold text-foreground text-center py-4">Ward</TableHead>
                 <TableHead className="font-semibold text-foreground text-center py-4">Total Patients</TableHead>
@@ -244,7 +239,6 @@ const CensusSubmissions = () => {
         </CardContent>
       </Card>
 
-      {/* Ward Detail Dialog */}
       <Dialog open={!!selectedEntry} onOpenChange={() => setSelectedEntry(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           {selectedEntry && (
@@ -268,7 +262,6 @@ const CensusSubmissions = () => {
               </DialogHeader>
 
               <div className="space-y-6 mt-4">
-                {/* Patient Diets */}
                 <div>
                   <h4 className="text-lg font-semibold mb-3 border-b pb-2">Patient Diets</h4>
                   <div className="grid grid-cols-2 gap-x-8 gap-y-3">
@@ -286,7 +279,6 @@ const CensusSubmissions = () => {
                   </div>
                 </div>
 
-                {/* Special Requests */}
                 {Object.values(selectedEntry.special || {}).some((v) => Number(v) > 0) && (
                   <div>
                     <h4 className="text-lg font-semibold mb-3 border-b pb-2">Special Requests</h4>
@@ -303,7 +295,6 @@ const CensusSubmissions = () => {
                   </div>
                 )}
 
-                {/* Extra Items */}
                 {Object.values(selectedEntry.extras || {}).some((v) => Number(v) > 0) && (
                   <div>
                     <h4 className="text-lg font-semibold mb-3 border-b pb-2">Extra Items</h4>
@@ -320,7 +311,6 @@ const CensusSubmissions = () => {
                   </div>
                 )}
 
-                {/* Custom Extra Items */}
                 {selectedEntry.customExtras?.length > 0 && (
                   <div>
                     <h4 className="text-lg font-semibold mb-3 border-b pb-2">Custom Extra Items</h4>

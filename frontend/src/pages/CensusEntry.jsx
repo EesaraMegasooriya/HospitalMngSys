@@ -38,8 +38,8 @@ const statusConfig = {
 
 const getDietKey = (diet) => String(diet.code || diet.id);
 
-// 👇 Upgraded NumField for better readability and touch targets
-const NumField = ({ value, onChange, onEnter, inputRef, className = "", disabled }) => {
+// Upgraded NumField to allow overriding the fixed width for mobile screens
+const NumField = ({ value, onChange, onEnter, inputRef, className, disabled }) => {
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -59,7 +59,10 @@ const NumField = ({ value, onChange, onEnter, inputRef, className = "", disabled
         if (/^\d*$/.test(raw)) onChange(raw);
       }}
       onKeyDown={handleKeyDown}
-      className={`h-12 text-lg font-semibold text-center text-foreground w-24 touch-target focus-visible:ring-0 focus-visible:ring-offset-0 ${className}`}
+      className={cn(
+        "h-12 text-lg font-semibold text-center text-foreground touch-target focus-visible:ring-0 focus-visible:ring-offset-0",
+        className ? className : "w-20 sm:w-24" // Fallback to 20/24 if no custom class is passed
+      )}
     />
   );
 };
@@ -365,8 +368,15 @@ const CensusEntryPage = () => {
 
   let refIdx = 0;
 
+  // Added numerical sorting for the ward quick tiles
+  const sortedWardStatuses = useMemo(() => {
+    return [...wardStatuses].sort((a, b) => {
+      return (a.ward.code || "").localeCompare(b.ward.code || "", undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [wardStatuses]);
+
   return (
-    <div className="space-y-4 pb-28 md:pb-6">
+    <div className="space-y-4 pb-36 md:pb-6">
       <h1 className="text-heading-lg text-foreground">Census Entry</h1>
 
       <Card>
@@ -376,8 +386,9 @@ const CensusEntryPage = () => {
             <span className="text-base font-bold text-primary">{submissionPct}%</span>
           </div>
           <Progress value={submissionPct} className="h-3" />
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 mt-3">
-            {wardStatuses.map((ws) => {
+          
+          <div className="grid grid-cols-3 min-[400px]:grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 mt-3">
+            {sortedWardStatuses.map((ws) => {
               const isSubmitted = ws.status === "submitted" || ws.status === "locked";
               const isActive = String(ws.ward.id) === String(wardId);
               return (
@@ -385,12 +396,12 @@ const CensusEntryPage = () => {
                   key={ws.ward.id}
                   onClick={() => loadWardData(ws.ward.id)}
                   className={cn(
-                    "rounded-lg p-2 text-center text-sm border transition-all cursor-pointer",
+                    "rounded-lg p-2 text-center text-sm border transition-all cursor-pointer overflow-hidden",
                     isActive && "ring-2 ring-primary",
                     isSubmitted ? "bg-primary/10 border-primary/30 text-primary" : "bg-muted border-border text-muted-foreground hover:bg-muted/80"
                   )}
                 >
-                  <p className="font-semibold truncate text-base">{ws.ward.code}</p>
+                  <p className="font-semibold truncate text-sm sm:text-base">{ws.ward.code}</p>
                   {isSubmitted && <p className="text-xs">{ws.totalPatients}p</p>}
                 </button>
               );
@@ -400,9 +411,9 @@ const CensusEntryPage = () => {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex gap gap-10 h-12">
-          <TabsTrigger value="patients" className="flex-1 touch-target text-base">Patient Census</TabsTrigger>
-          <TabsTrigger value="staff" className="flex-1 touch-target text-base">Staff Meals</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 h-auto p-1 bg-muted">
+          <TabsTrigger value="patients" className="touch-target text-sm sm:text-base py-2">Patient Census</TabsTrigger>
+          <TabsTrigger value="staff" className="touch-target text-sm sm:text-base py-2">Staff Meals</TabsTrigger>
         </TabsList>
 
         <TabsContent value="patients" className="space-y-4 mt-4">
@@ -439,14 +450,14 @@ const CensusEntryPage = () => {
                   </Popover>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline" className="h-10 gap-2 text-sm px-4 py-1">
+                <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0 sm:gap-3">
+                  <Badge variant="outline" className="h-10 gap-2 text-xs sm:text-sm px-3 sm:px-4 py-1">
                     <CalendarDays className="h-4 w-4" />
                     {new Date().toLocaleDateString("en-LK", { year: "numeric", month: "short", day: "numeric" })}
                   </Badge>
 
                   {ward && (
-                    <Badge className={statusConfig[status].className + " h-10 text-sm px-4 py-1"}>
+                    <Badge className={statusConfig[status].className + " h-10 text-xs sm:text-sm px-3 sm:px-4 py-1"}>
                       {statusConfig[status].label}
                     </Badge>
                   )}
@@ -553,14 +564,14 @@ const CensusEntryPage = () => {
                   <CollapsibleContent>
                     <CardContent className="pt-0">
                       <div className="border rounded-lg overflow-hidden">
-                        <div className="grid grid-cols-[1fr_120px_80px] gap-4 bg-muted px-5 py-3 text-base font-semibold text-muted-foreground">
+                        <div className="grid grid-cols-[1fr_80px_50px] sm:grid-cols-[1fr_120px_80px] gap-2 sm:gap-4 bg-muted px-3 sm:px-5 py-3 text-xs sm:text-base font-semibold text-muted-foreground">
                           <span>Item</span><span className="text-center">Qty</span><span className="text-center">Unit</span>
                         </div>
                         {extraItemsMaster.map((item) => {
                           const idx = refIdx++;
                           return (
-                            <div key={item.id} className="grid grid-cols-[1fr_120px_80px] gap-4 px-5 py-3 border-t items-center">
-                              <span className="text-lg font-medium">{item.name}</span>
+                            <div key={item.id} className="grid grid-cols-[1fr_80px_50px] sm:grid-cols-[1fr_120px_80px] gap-2 sm:gap-4 px-3 sm:px-5 py-2 sm:py-3 border-t items-center">
+                              <span className="text-sm sm:text-lg font-medium">{item.name}</span>
                               <NumField
                                 disabled={isReadOnly}
                                 value={extras[item.name] ?? ""}
@@ -569,20 +580,20 @@ const CensusEntryPage = () => {
                                 inputRef={registerRef(idx)}
                                 className="w-full text-primary border-slate-300 focus:border-primary"
                               />
-                              <span className="text-base font-medium text-muted-foreground text-center">{item.unit}</span>
+                              <span className="text-sm sm:text-base font-medium text-muted-foreground text-center">{item.unit}</span>
                             </div>
                           );
                         })}
                         {customExtras.map((item, i) => (
-                          <div key={`custom-${i}`} className="grid grid-cols-[1fr_120px_80px] gap-4 px-5 py-3 border-t items-center bg-accent/30">
-                            <span className="text-lg font-medium">{item.name}</span>
+                          <div key={`custom-${i}`} className="grid grid-cols-[1fr_80px_50px] sm:grid-cols-[1fr_120px_80px] gap-2 sm:gap-4 px-3 sm:px-5 py-2 sm:py-3 border-t items-center bg-accent/30">
+                            <span className="text-sm sm:text-lg font-medium">{item.name}</span>
                             <NumField
                               disabled={isReadOnly}
                               value={item.quantity ?? ""}
                               onChange={(v) => !isReadOnly && setCustomExtras((prev) => prev.map((ce, j) => j === i ? { ...ce, quantity: v } : ce))}
                               className="w-full text-primary border-slate-300 focus:border-primary"
                             />
-                            <span className="text-base font-medium text-muted-foreground text-center">{item.unit}</span>
+                            <span className="text-sm sm:text-base font-medium text-muted-foreground text-center">{item.unit}</span>
                           </div>
                         ))}
                       </div>
@@ -597,12 +608,12 @@ const CensusEntryPage = () => {
               </Collapsible>
 
               {!isReadOnly && (
-                <div className="fixed bottom-0 left-0 right-0 md:static bg-card border-t md:border-0 p-4 md:p-0 flex gap-4 z-30 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] md:shadow-none">
-                  <Button variant="outline" className="h-12 text-base font-semibold touch-target" disabled={!wardId || savingDraft} onClick={saveDraft}>
+                <div className="fixed bottom-0 left-0 right-0 md:static bg-card border-t md:border-0 p-3 sm:p-4 md:p-0 flex flex-col sm:flex-row gap-2 sm:gap-4 z-30 shadow-[0_-4px_15px_rgba(0,0,0,0.1)] md:shadow-none">
+                  <Button variant="outline" className="h-12 text-base font-semibold touch-target w-full sm:w-auto" disabled={!wardId || savingDraft} onClick={saveDraft}>
                     <Save className="h-5 w-5 mr-2" /> {savingDraft ? "Saving..." : "Save Draft"}
                   </Button>
                   <Button
-                    className={cn("flex-1 md:flex-none h-12 text-base font-semibold touch-target", status === "submitted" ? "bg-accent text-accent-foreground hover:bg-accent/90" : "")}
+                    className={cn("flex-1 h-12 text-base font-semibold touch-target w-full sm:w-auto", status === "submitted" ? "bg-accent text-accent-foreground hover:bg-accent/90" : "")}
                     disabled={overCapacity || totalPatients === 0 || submitting}
                     onClick={() => setConfirmOpen(true)}
                   >
