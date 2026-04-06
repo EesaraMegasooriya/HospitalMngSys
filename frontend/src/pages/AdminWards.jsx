@@ -117,7 +117,7 @@ const AdminWards = () => {
   const sortedWards = [...wards].sort((a, b) => {
     if (a.active && !b.active) return -1;
     if (!a.active && b.active) return 1;
-    return (a.code || "").localeCompare(b.code || "");
+    return (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: 'base' });
   });
 
   return (
