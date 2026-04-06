@@ -15,7 +15,7 @@ import {
   ClipboardList,
   HeartPulse,
 } from "lucide-react";
-import HospitalImg from "../../../frontend/public/Hospital-bg.jpg";
+import HospitalImg from "../../../frontend/public/Hospital-bg.png";
 
 // ── Main Login Component ─────────────────────────────────────────────────────
 
@@ -133,9 +133,6 @@ function Login() {
           alt="District General Hospital Gampaha"
           className="absolute inset-0 w-full h-full object-cover object-left"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#071a10]/95 via-[#0d2b1f]/60 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0a2218]/50 to-transparent" />
-        <div className="absolute inset-0 bg-[#0f3320]/25" />
 
         <div className="absolute inset-0 flex flex-col justify-between p-10">
           {/* ── TOP: Logo ── */}
