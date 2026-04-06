@@ -38,7 +38,7 @@ const statusConfig = {
 
 const getDietKey = (diet) => String(diet.code || diet.id);
 
-// Upgraded NumField to allow overriding the fixed width for mobile screens
+
 const NumField = ({ value, onChange, onEnter, inputRef, className, disabled }) => {
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
@@ -60,8 +60,8 @@ const NumField = ({ value, onChange, onEnter, inputRef, className, disabled }) =
       }}
       onKeyDown={handleKeyDown}
       className={cn(
-        "h-12 text-lg font-semibold text-center text-foreground touch-target focus-visible:ring-0 focus-visible:ring-offset-0",
-        className ? className : "w-20 sm:w-24" // Fallback to 20/24 if no custom class is passed
+        "w-24 h-12 text-lg font-semibold text-center text-foreground touch-target focus-visible:ring-0 focus-visible:ring-offset-0",
+        className
       )}
     />
   );
@@ -368,12 +368,18 @@ const CensusEntryPage = () => {
 
   let refIdx = 0;
 
-  // Added numerical sorting for the ward quick tiles
   const sortedWardStatuses = useMemo(() => {
     return [...wardStatuses].sort((a, b) => {
       return (a.ward.code || "").localeCompare(b.ward.code || "", undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [wardStatuses]);
+
+  // sorting explicitly for the dropdown menu
+  const sortedWardsForDropdown = useMemo(() => {
+    return [...wards].sort((a, b) => {
+      return (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [wards]);
 
   return (
     <div className="space-y-4 pb-36 md:pb-6">
@@ -436,7 +442,8 @@ const CensusEntryPage = () => {
                         <CommandList>
                           <CommandEmpty className="text-base py-6 text-center">No ward found.</CommandEmpty>
                           <CommandGroup>
-                            {wards.map((w) => (
+                            
+                            {sortedWardsForDropdown.map((w) => (
                               <CommandItem key={w.id} value={`${w.name} ${w.code}`} onSelect={() => loadWardData(w.id)} className="text-base py-2">
                                 <Check className={cn("mr-2 h-5 w-5", String(wardId) === String(w.id) ? "opacity-100" : "opacity-0")} />
                                 <span className="font-medium">{w.name}</span>
@@ -530,14 +537,15 @@ const CensusEntryPage = () => {
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-heading-sm">Special Requests</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
                     {recipesMaster.map((item) => {
                       const idx = refIdx++;
                       return (
-                        <div key={item.key} className="space-y-2">
+                        <div key={item.key} className="flex items-center justify-between gap-3">
                           <Label className="text-base font-semibold">{item.name}</Label>
                           <NumField
-                            className="text-primary w-full border-slate-300 focus:border-primary"
+                            className="text-primary border-slate-300 focus:border-primary"
                             disabled={isReadOnly}
                             value={special[item.key] ?? ""}
                             onChange={(v) => !isReadOnly && setSpecial((s) => ({ ...s, [item.key]: v }))}
@@ -572,6 +580,7 @@ const CensusEntryPage = () => {
                           return (
                             <div key={item.id} className="grid grid-cols-[1fr_80px_50px] sm:grid-cols-[1fr_120px_80px] gap-2 sm:gap-4 px-3 sm:px-5 py-2 sm:py-3 border-t items-center">
                               <span className="text-sm sm:text-lg font-medium">{item.name}</span>
+                              
                               <NumField
                                 disabled={isReadOnly}
                                 value={extras[item.name] ?? ""}
@@ -641,13 +650,14 @@ const CensusEntryPage = () => {
             <CardContent className="space-y-8">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
                 {["breakfast", "lunch", "dinner"].map((meal) => (
-                  <div key={meal} className="space-y-3 text-center">
+                  <div key={meal} className="space-y-3 text-center flex flex-col items-center">
                     <Label className="text-lg font-bold capitalize">{meal}</Label>
+                    {/* 👇 Updated Staff Meals to be centered and not stretch 100% horizontally */}
                     <NumField
                       disabled={staffReadOnly}
                       value={staffMeals[meal] ?? ""}
                       onChange={(v) => !staffReadOnly && setStaffMeals((s) => ({ ...s, [meal]: v }))}
-                      className="h-16 text-3xl text-center touch-target font-bold w-full border-slate-300 focus:border-primary"
+                      className="h-16 text-3xl mx-auto touch-target font-bold w-32 border-slate-300 focus:border-primary"
                     />
                   </div>
                 ))}
@@ -707,6 +717,7 @@ const CensusEntryPage = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-base font-semibold">Quantity</Label>
+                
                 <NumField value={newItem.quantity ?? ""} onChange={(v) => setNewItem((n) => ({ ...n, quantity: v }))} className="w-full text-primary border-slate-300 focus:border-primary" />
               </div>
               <div className="space-y-2">

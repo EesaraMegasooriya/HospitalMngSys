@@ -6,7 +6,6 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Shield,
   ArrowRight,
   Check,
   AlertCircle,
@@ -126,7 +125,7 @@ function Login() {
   return (
     <div className="min-h-screen flex bg-[#f0f7f4]">
 
-      {/* ── LEFT PANEL ── */}
+      {/* ── LEFT PANEL (Desktop Only) ── */}
       <div className="hidden lg:block lg:w-[50%] relative overflow-hidden">
         <img
           src={HospitalImg}
@@ -191,12 +190,15 @@ function Login() {
         </div>
       </div>
 
-      {/* ── RIGHT PANEL ── */}
-      <div className="flex-1 flex items-center justify-center px-6 py-16 bg-transparent">
-        <div className="w-full max-w-[480px] bg-white/90 rounded-2xl shadow-xl p-14 backdrop-blur-md border border-[#d2e3db] scale-105">
+      {/* ── RIGHT PANEL (Form Area) ── */}
+      
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8 sm:py-16 bg-transparent">
+        
+        
+        <div className="w-full max-w-[480px] bg-white/90 rounded-2xl shadow-xl p-6 sm:p-10 lg:p-14 backdrop-blur-md border border-[#d2e3db] lg:scale-105">
 
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-2.5 mb-10">
+          <div className="lg:hidden flex items-center gap-2.5 mb-8">
             <div className="w-9 h-9 rounded-lg bg-[#2d6a4e] flex items-center justify-center">
               <HeartPulse className="w-4 h-4 text-white" strokeWidth={1.8} />
             </div>
@@ -208,7 +210,8 @@ function Login() {
             <p className="text-[#2d6a4e] text-[11px] font-bold tracking-[2.5px] uppercase mb-2">
               Staff Portal
             </p>
-            <h2 className="text-gray-900 text-[1.9rem] font-bold mb-2 leading-tight">
+            
+            <h2 className="text-gray-900 text-2xl sm:text-[1.9rem] font-bold mb-2 leading-tight">
               {needsNewPassword ? "Set New Password" : "Welcome"}
             </h2>
             <p className="text-gray-400 text-[14.5px] leading-relaxed">
@@ -283,7 +286,8 @@ function Login() {
                 {errors.password && <p className="mt-1.5 text-xs text-red-500">{errors.password}</p>}
               </div>
 
-              <div className="flex items-center justify-between pt-1">
+              
+              <div className="flex flex-wrap items-center justify-between pt-1 gap-y-3">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <div
                     onClick={() => setRemember((v) => !v)}
@@ -295,12 +299,12 @@ function Login() {
                   <span className="text-[13.5px] text-gray-600">Keep me signed in</span>
                 </label>
                 <button 
-    type="button" 
-    onClick={() => setErrors({ general: "To reset your password, please contact the System Administrator or IT Support. They will provide you with a temporary login." })}
-    className="text-[13.5px] font-semibold text-[#2d6a4e] hover:text-[#1a4030] transition-colors duration-200"
-  >
-    Forgot password?
-  </button>
+                  type="button" 
+                  onClick={() => setErrors({ general: "To reset your password, please contact the System Administrator or IT Support. They will provide you with a temporary login." })}
+                  className="text-[13.5px] font-semibold text-[#2d6a4e] hover:text-[#1a4030] transition-colors duration-200"
+                >
+                  Forgot password?
+                </button>
               </div>
 
               <div className="pt-2">
