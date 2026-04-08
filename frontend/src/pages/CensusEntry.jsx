@@ -38,7 +38,6 @@ const statusConfig = {
 
 const getDietKey = (diet) => String(diet.code || diet.id);
 
-
 const NumField = ({ value, onChange, onEnter, inputRef, className, disabled }) => {
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
@@ -374,7 +373,6 @@ const CensusEntryPage = () => {
     });
   }, [wardStatuses]);
 
-  // sorting explicitly for the dropdown menu
   const sortedWardsForDropdown = useMemo(() => {
     return [...wards].sort((a, b) => {
       return (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: 'base' });
@@ -442,7 +440,6 @@ const CensusEntryPage = () => {
                         <CommandList>
                           <CommandEmpty className="text-base py-6 text-center">No ward found.</CommandEmpty>
                           <CommandGroup>
-                            
                             {sortedWardsForDropdown.map((w) => (
                               <CommandItem key={w.id} value={`${w.name} ${w.code}`} onSelect={() => loadWardData(w.id)} className="text-base py-2">
                                 <Check className={cn("mr-2 h-5 w-5", String(wardId) === String(w.id) ? "opacity-100" : "opacity-0")} />
@@ -510,7 +507,7 @@ const CensusEntryPage = () => {
                             )}
                           </div>
                           <NumField
-                            className="text-primary border-slate-300 focus:border-primary"
+                            className="text-primary border-neutral-700 focus:border-primary"
                             disabled={isReadOnly}
                             value={diets[dietKey] ?? ""}
                             onChange={(v) => !isReadOnly && setDiets((prev) => ({ ...prev, [dietKey]: v }))}
@@ -537,15 +534,14 @@ const CensusEntryPage = () => {
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-heading-sm">Special Requests</CardTitle></CardHeader>
                 <CardContent>
-                
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
                     {recipesMaster.map((item) => {
                       const idx = refIdx++;
                       return (
-                        <div key={item.key} className="flex items-center justify-between gap-3">
-                          <Label className="text-base font-semibold">{item.name}</Label>
+                        <div key={item.key} className="flex items-center gap-1 sm:gap-2 md:gap-3">
+                          <Label className="text-base font-semibold whitespace-nowrap flex-shrink-0">{item.name}</Label>
                           <NumField
-                            className="text-primary border-slate-300 focus:border-primary"
+                            className="text-primary border-neutral-700 bg-white max-w-[9px] sm:max-w-[110px] md:max-w-[120px]"
                             disabled={isReadOnly}
                             value={special[item.key] ?? ""}
                             onChange={(v) => !isReadOnly && setSpecial((s) => ({ ...s, [item.key]: v }))}
@@ -580,14 +576,13 @@ const CensusEntryPage = () => {
                           return (
                             <div key={item.id} className="grid grid-cols-[1fr_80px_50px] sm:grid-cols-[1fr_120px_80px] gap-2 sm:gap-4 px-3 sm:px-5 py-2 sm:py-3 border-t items-center">
                               <span className="text-sm sm:text-lg font-medium">{item.name}</span>
-                              
                               <NumField
                                 disabled={isReadOnly}
                                 value={extras[item.name] ?? ""}
                                 onChange={(v) => !isReadOnly && setExtras((e) => ({ ...e, [item.name]: v }))}
                                 onEnter={() => focusNext(idx)}
                                 inputRef={registerRef(idx)}
-                                className="w-full text-primary border-slate-300 focus:border-primary"
+                                className="w-full text-primary border-neutral-700 focus:border-primary"
                               />
                               <span className="text-sm sm:text-base font-medium text-muted-foreground text-center">{item.unit}</span>
                             </div>
@@ -600,7 +595,7 @@ const CensusEntryPage = () => {
                               disabled={isReadOnly}
                               value={item.quantity ?? ""}
                               onChange={(v) => !isReadOnly && setCustomExtras((prev) => prev.map((ce, j) => j === i ? { ...ce, quantity: v } : ce))}
-                              className="w-full text-primary border-slate-300 focus:border-primary"
+                              className="w-full text-primary border-neutral-700 focus:border-primary"
                             />
                             <span className="text-sm sm:text-base font-medium text-muted-foreground text-center">{item.unit}</span>
                           </div>
@@ -621,9 +616,11 @@ const CensusEntryPage = () => {
                   <Button variant="outline" className="h-12 text-base font-semibold touch-target w-full sm:w-auto" disabled={!wardId || savingDraft} onClick={saveDraft}>
                     <Save className="h-5 w-5 mr-2" /> {savingDraft ? "Saving..." : "Save Draft"}
                   </Button>
+                  
+                  {/* 👇 Removed totalPatients === 0 restriction so 0 patient wards can be submitted */}
                   <Button
                     className={cn("flex-1 h-12 text-base font-semibold touch-target w-full sm:w-auto", status === "submitted" ? "bg-accent text-accent-foreground hover:bg-accent/90" : "")}
-                    disabled={overCapacity || totalPatients === 0 || submitting}
+                    disabled={overCapacity || submitting}
                     onClick={() => setConfirmOpen(true)}
                   >
                     <Send className="h-5 w-5 mr-2" />
@@ -652,7 +649,6 @@ const CensusEntryPage = () => {
                 {["breakfast", "lunch", "dinner"].map((meal) => (
                   <div key={meal} className="space-y-3 text-center flex flex-col items-center">
                     <Label className="text-lg font-bold capitalize">{meal}</Label>
-                    {/* 👇 Updated Staff Meals to be centered and not stretch 100% horizontally */}
                     <NumField
                       disabled={staffReadOnly}
                       value={staffMeals[meal] ?? ""}
@@ -672,7 +668,6 @@ const CensusEntryPage = () => {
                   <Button
                     className={cn("h-12 px-8 touch-target text-base font-semibold w-full sm:w-auto", staffStatus === "submitted" ? "bg-accent text-accent-foreground hover:bg-accent/90" : "")}
                     onClick={handleSubmitStaff}
-                    disabled={ (parseInt(staffMeals.breakfast, 10) || 0) + (parseInt(staffMeals.lunch, 10) || 0) + (parseInt(staffMeals.dinner, 10) || 0) === 0}
                   >
                     <Send className="h-5 w-5 mr-2" /> {staffStatus === "submitted" ? "Update Staff Meals" : "Submit Staff Meals"}
                   </Button>
@@ -691,10 +686,20 @@ const CensusEntryPage = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-xl">{status === "submitted" ? "Update Census Data" : "Submit Census Data"}</DialogTitle>
-            <DialogDescription className="text-base mt-2">
-              {status === "submitted" 
-                ? `You are about to override the submitted data for ${ward?.name}. Continue?`
-                : `Are you sure you want to submit ${ward?.name}'s data?`}
+            <DialogDescription className="text-base mt-2 flex flex-col gap-3">
+              <span>
+                {status === "submitted" 
+                  ? `You are about to override the submitted data for ${ward?.name}. Continue?`
+                  : `Are you sure you want to submit ${ward?.name}'s data?`}
+              </span>
+
+              {/* 👇 Warning shown if submitting a zero patient count */}
+              {totalPatients === 0 && (
+                <span className="p-3 bg-warning/10 text-warning rounded-lg border border-warning/20 font-semibold flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  WARNING: You are submitting ZERO patient meals for this ward.
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-3 mt-4">
@@ -717,7 +722,6 @@ const CensusEntryPage = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-base font-semibold">Quantity</Label>
-                
                 <NumField value={newItem.quantity ?? ""} onChange={(v) => setNewItem((n) => ({ ...n, quantity: v }))} className="w-full text-primary border-slate-300 focus:border-primary" />
               </div>
               <div className="space-y-2">

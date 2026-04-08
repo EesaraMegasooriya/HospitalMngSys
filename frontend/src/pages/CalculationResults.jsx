@@ -13,7 +13,7 @@ import { Search, Loader2, FileText, ClipboardList } from "lucide-react";
 import { getTodaySL } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5050/api";;
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5050/api";
 
 const getAuthHeaders = () => {
   const token = sessionStorage.getItem("token");
@@ -218,13 +218,11 @@ const CalculationResults = () => {
   };
 
   const renderCalculatedTable = (items) => {
-    // 👇 Auto-Sort Calculated Items Alphabetically
     const sortedItems = [...items].sort((a, b) => (a.nameEn || "").localeCompare(b.nameEn || ""));
 
     return (
       <Table>
         <TableHeader>
-          {/* 👇 Upgraded Header Typography & Alignment */}
           <TableRow className="text-lg bg-muted/30">
             <TableHead className="w-12 text-center font-semibold text-foreground py-4">#</TableHead>
             <TableHead className="text-center font-semibold text-foreground py-4">Item (EN)</TableHead>
@@ -237,7 +235,6 @@ const CalculationResults = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {/* 👇 Upgraded Row Typography & Alignment */}
           {sortedItems.map((item, idx) => (
             <TableRow key={item.id} className="text-lg hover:bg-muted/50 transition-colors">
               <TableCell className="text-muted-foreground py-5 text-center">{idx + 1}</TableCell>
@@ -267,7 +264,6 @@ const CalculationResults = () => {
   };
 
   const renderSelectionTable = (catId, catName) => {
-    // 👇 Auto-Sort Selection Options Alphabetically
     const options = [...(allItemsByCategory[catId] || [])].sort((a, b) => (a.nameEn || "").localeCompare(b.nameEn || ""));
     const selectedCount = options.filter((o) => selections[o.id]?.selected).length;
 
@@ -284,7 +280,6 @@ const CalculationResults = () => {
         <CardContent className="pt-0">
           <Table>
             <TableHeader>
-              {/* 👇 Upgraded Header Typography & Alignment */}
               <TableRow className="text-lg">
                 <TableHead className="w-16 text-center font-semibold text-foreground py-4">Order</TableHead>
                 <TableHead className="text-center font-semibold text-foreground py-4">Item (EN)</TableHead>
@@ -296,7 +291,6 @@ const CalculationResults = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* 👇 Upgraded Row Typography, Inputs & Alignment */}
               {options.map((item) => {
                 const isSelected = selections[item.id]?.selected || false;
                 const qty = selections[item.id]?.quantity || 0;
@@ -319,7 +313,6 @@ const CalculationResults = () => {
                     <TableCell className={`py-5 text-center font-medium ${isSelected ? "" : "text-muted-foreground"}`}>
                       <div className="flex flex-col items-center justify-center gap-2">
                         <span>{item.nameEn}</span>
-                        {/* 👇 Larger, clearer Guidance Badge */}
                         {suggestedQty > 0 && (
                           <Badge variant="outline" className="text-xs px-2 py-0.5 bg-warning/10 text-warning border-warning/40 font-bold whitespace-nowrap gap-1.5">
                             <ClipboardList className="h-3.5 w-3.5" /> Requested: {suggestedQty}
@@ -396,7 +389,6 @@ const CalculationResults = () => {
   }
   grandTotal = Math.round(grandTotal * 100) / 100;
 
-  // 👇 Sort recipes alphabetically
   const sortedRecipes = [...recipeResults].sort((a, b) => (a.recipeName || "").localeCompare(b.recipeName || ""));
 
   return (
@@ -424,6 +416,13 @@ const CalculationResults = () => {
               </TabsTrigger>
             );
           })}
+
+          {/* 👇 The new dynamic Recipes Tab Trigger */}
+          {sortedRecipes.length > 0 && (
+            <TabsTrigger value="recipes" className="text-base h-11 px-5 gap-2 touch-target data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Recipes
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {categories.map((cat) => {
@@ -440,57 +439,59 @@ const CalculationResults = () => {
             </TabsContent>
           );
         })}
+
+        {/* 👇 The new Recipes Tab Content */}
+        {sortedRecipes.length > 0 && (
+          <TabsContent value="recipes">
+            <div className="space-y-4">
+              <h2 className="text-heading-md font-bold text-foreground mb-4">Special Requests — Recipe Calculations</h2>
+              {sortedRecipes.map((recipe) => {
+                const sortedIngredients = [...(recipe.ingredients || [])].sort((a, b) => (a.nameEn || "").localeCompare(b.nameEn || ""));
+
+                return (
+                  <Card key={recipe.recipeId} className="border-primary/20">
+                    <CardHeader className="pb-3 bg-muted/10 border-b">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <CardTitle className="text-heading-sm">{recipe.recipeName}</CardTitle>
+                        <div className="flex items-center gap-3">
+                          <Badge className="bg-muted text-muted-foreground text-base px-3 py-1 hover:bg-muted">{recipe.rawPatientCount} patients requested</Badge>
+                          <Badge className="bg-primary text-primary-foreground text-base px-3 py-1">Weighted count: {recipe.weightedCount}</Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0 px-0 sm:px-6">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="text-lg">
+                            <TableHead className="w-12 text-center font-semibold text-foreground py-4">#</TableHead>
+                            <TableHead className="text-center font-semibold text-foreground py-4">Ingredient (EN)</TableHead>
+                            <TableHead className="hidden md:table-cell text-center font-semibold text-foreground py-4">Ingredient (SI)</TableHead>
+                            <TableHead className="text-center font-semibold text-foreground py-4">Norm / Patient</TableHead>
+                            <TableHead className="text-center font-bold text-foreground py-4">Total Quantity</TableHead>
+                            <TableHead className="text-center font-semibold text-foreground py-4">Unit</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sortedIngredients.map((ing, idx) => (
+                            <TableRow key={idx} className="text-lg hover:bg-muted/50 transition-colors">
+                              <TableCell className="text-muted-foreground py-5 text-center">{idx + 1}</TableCell>
+                              <TableCell className="font-medium py-5 text-center">{ing.nameEn}</TableCell>
+                              <TableCell className="hidden md:table-cell text-muted-foreground py-5 text-center">{ing.nameSi}</TableCell>
+                              <TableCell className="py-5 text-center">{ing.normPerPatient}</TableCell>
+                              <TableCell className="font-bold text-primary py-5 text-center text-xl">{ing.qty}</TableCell>
+                              <TableCell className="text-muted-foreground py-5 text-center">{ing.unit}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
-
-      {sortedRecipes.length > 0 && (
-        <div className="space-y-4 pt-6">
-          <h2 className="text-heading-md font-bold text-foreground mb-4">Special Requests — Recipe Calculations</h2>
-          {sortedRecipes.map((recipe) => {
-            // 👇 Sort ingredients inside the recipe alphabetically
-            const sortedIngredients = [...(recipe.ingredients || [])].sort((a, b) => (a.nameEn || "").localeCompare(b.nameEn || ""));
-
-            return (
-              <Card key={recipe.recipeId} className="border-primary/20">
-                <CardHeader className="pb-3 bg-muted/10 border-b">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <CardTitle className="text-heading-sm">{recipe.recipeName}</CardTitle>
-                    <div className="flex items-center gap-3">
-                      <Badge className="bg-muted text-muted-foreground text-base px-3 py-1 hover:bg-muted">{recipe.rawPatientCount} patients requested</Badge>
-                      <Badge className="bg-primary text-primary-foreground text-base px-3 py-1">Weighted count: {recipe.weightedCount}</Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0 px-0 sm:px-6">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="text-lg">
-                        <TableHead className="w-12 text-center font-semibold text-foreground py-4">#</TableHead>
-                        <TableHead className="text-center font-semibold text-foreground py-4">Ingredient (EN)</TableHead>
-                        <TableHead className="hidden md:table-cell text-center font-semibold text-foreground py-4">Ingredient (SI)</TableHead>
-                        <TableHead className="text-center font-semibold text-foreground py-4">Norm / Patient</TableHead>
-                        <TableHead className="text-center font-bold text-foreground py-4">Total Quantity</TableHead>
-                        <TableHead className="text-center font-semibold text-foreground py-4">Unit</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortedIngredients.map((ing, idx) => (
-                        <TableRow key={idx} className="text-lg hover:bg-muted/50 transition-colors">
-                          <TableCell className="text-muted-foreground py-5 text-center">{idx + 1}</TableCell>
-                          <TableCell className="font-medium py-5 text-center">{ing.nameEn}</TableCell>
-                          <TableCell className="hidden md:table-cell text-muted-foreground py-5 text-center">{ing.nameSi}</TableCell>
-                          <TableCell className="py-5 text-center">{ing.normPerPatient}</TableCell>
-                          <TableCell className="font-bold text-primary py-5 text-center text-xl">{ing.qty}</TableCell>
-                          <TableCell className="text-muted-foreground py-5 text-center">{ing.unit}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
 
       {/* Sticky Bottom Bar */}
       <div className="sticky bottom-0 z-40 bg-background/95 backdrop-blur border-t-2 border-primary/20 py-4 -mx-4 px-4 md:-mx-6 md:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">

@@ -35,8 +35,8 @@
     --warning-bg: 38 92% 95%;
 
     /* --- Form & Borders --- */
-    --border: 220 13% 75%;
-    --input: 220 13% 75%;
+    --border: 220 13% 40%;
+    --input: 220 13% 55%;
     --ring: 142 72% 36%;
     --radius: 0.625rem;
 

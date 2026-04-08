@@ -80,6 +80,7 @@ export const NAV_ITEMS = {
     { title: "Admin Diet Cycle", url: "/admin/diet-cycle", icon: ListTree },
     { title: "Admin Diet Type", url: "/admin/diet-types", icon: Utensils },
     { title: "Admin Items", url: "/admin/items", icon: Package },
+    { title: "Admin Norm Weights", url: "/admin/norm-weights", icon: Scale },
     { title: "Admin Recipes", url: "/admin/recipes", icon: BookOpen },
     { title: "Admin Wards", url: "/admin/wards", icon: Building2 },
     { title: "Issue Reports", url: "/admin/reports", icon: AlertTriangle },

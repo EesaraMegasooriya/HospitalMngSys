@@ -20,7 +20,6 @@ const getAuthHeaders = () => {
   };
 };
 
-// 👇 Upgraded to use rich theme colors
 const statusConfig = {
   not_started: { label: "Not Started", className: "bg-muted text-muted-foreground" },
   draft: { label: "Draft", className: "bg-warning-bg text-warning" },
@@ -43,18 +42,20 @@ const Calculations = () => {
   const [staffMeals, setStaffMeals] = useState(null);
   const [dailyCycle, setDailyCycle] = useState({ patientCycle: "Vegetable", staffCycle: "Chicken" });
   const [dietTypes, setDietTypes] = useState([]);
+  const [recipes, setRecipes] = useState([]); // 👈 Added recipes state
 
   useEffect(() => {
     const fetchAll = async () => {
       try {
         setLoading(true);
 
-        const [wardsRes, statusesRes, staffRes, cycleRes, dietTypesRes] = await Promise.all([
+        const [wardsRes, statusesRes, staffRes, cycleRes, dietTypesRes, recipesRes] = await Promise.all([
           fetch(`${API_BASE}/wards`, { headers: getAuthHeaders() }),
           fetch(`${API_BASE}/census/statuses?date=${today}`, { headers: getAuthHeaders() }),
           fetch(`${API_BASE}/census/staff?date=${today}`, { headers: getAuthHeaders() }),
           fetch(`${API_BASE}/daily-cycle?date=${today}`, { headers: getAuthHeaders() }),
           fetch(`${API_BASE}/diet-types`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/recipes`, { headers: getAuthHeaders() }), // 👈 Fetches recipes
         ]);
 
         try {
@@ -67,11 +68,13 @@ const Calculations = () => {
         const staffData = await staffRes.json();
         const cycleData = await cycleRes.json();
         const dietTypesData = await dietTypesRes.json();
+        const recipesData = await recipesRes.json(); // 👈 Extract recipe data
 
         const activeWards = (wardsData.wards || []).filter((w) => w.active);
         setWards(activeWards);
         
         setDietTypes((dietTypesData.dietTypes || []).filter((d) => d.active && d.type !== "Staff"));
+        setRecipes(recipesData.recipes || []); // 👈 Set recipes to state
 
         const statuses = statusesData.statuses || [];
         const merged = activeWards.map((w) => {
@@ -127,7 +130,14 @@ const Calculations = () => {
           totals[dt.code || dt.id] = 0;
         });
 
+        // 👈 Create an empty tracking object for recipe counts
+        const specialTotals = {};
+        recipes.forEach((r) => {
+          specialTotals[r.recipeKey] = 0;
+        });
+
         for (const sub of submissions) {
+          // Process standard diet types
           const diets = sub.diets || {};
           for (const [key, value] of Object.entries(diets)) {
             if (totals[key] !== undefined) {
@@ -136,12 +146,23 @@ const Calculations = () => {
               totals[key] = Number(value) || 0;
             }
           }
+
+          // 👈 Process and aggregate special requests (recipes)
+          const special = sub.special || {};
+          for (const [key, value] of Object.entries(special)) {
+            if (specialTotals[key] !== undefined) {
+              specialTotals[key] += Number(value) || 0;
+            } else {
+              specialTotals[key] = Number(value) || 0;
+            }
+          }
         }
 
         const totalPatients = Object.values(totals).reduce((s, v) => s + v, 0);
 
         setAggregated({
           totals,
+          specialTotals, // 👈 Store the aggregated recipe totals
           totalPatients,
           staffB: staffMeals?.breakfast || 0,
           staffL: staffMeals?.lunch || 0,
@@ -157,7 +178,7 @@ const Calculations = () => {
     };
 
     if (dietTypes.length > 0) fetchAggregated();
-  }, [submitted, dietTypes, staffMeals]);
+  }, [submitted, dietTypes, staffMeals, recipes]); // Added recipes to dependency array
 
   const handleRunCalc = async () => {
     setIsCalculating(true);
@@ -196,10 +217,9 @@ const Calculations = () => {
     return <Square className="h-6 w-6 text-orange-500" />;
   };
 
-  // 👇 Sort Wards Alphabetically by Code
   const sortedWardStatuses = useMemo(() => {
     return [...wardStatuses].sort((a, b) => 
-      (a.code || "").localeCompare(b.code || "")
+      (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: 'base' })
     );
   }, [wardStatuses]);
 
@@ -257,13 +277,12 @@ const Calculations = () => {
       </Card>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {/* 👇 Mapped over sorted wards with larger padding and text */}
         {sortedWardStatuses.map((w) => (
           <Card
             key={w.wardId}
             className={`p-4 border transition-colors ${
               w.status === "submitted" || w.status === "locked"
-                ? "border-success/40 bg-success/5"
+                ? "border-green-500 bg-green-100 text-green-900"
                 : w.status === "draft"
                 ? "border-warning/40 bg-warning/5"
                 : "border-orange-500/40 bg-orange-500/5"
@@ -279,8 +298,8 @@ const Calculations = () => {
             
             <div className="mt-3">
               {(w.status === "submitted" || w.status === "locked") && (
-                <p className="text-sm text-success font-bold">
-                  {w.patientCount} patients
+                <p className={cn("text-sm font-bold", w.patientCount === 0 ? "text-muted-foreground" : "text-green-900") }>
+                  {w.patientCount === 0 ? "0 patients (No Meals)" : `${w.patientCount} patients`}
                 </p>
               )}
               {w.status === "draft" && (
@@ -315,8 +334,27 @@ const Calculations = () => {
                 ))}
               </div>
             </div>
+
+            {/* 👇 Display the new Special Requests (Recipes) section if they exist */}
+            {recipes.length > 0 && (
+              <div className="pt-2">
+                <h4 className="text-base font-semibold text-muted-foreground mb-3">Special Requests (Recipes)</h4>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                  {recipes.map((r) => (
+                    <div key={r.id} className="bg-muted rounded-xl p-3 text-center border border-muted-foreground/10">
+                      <p className="text-sm font-semibold text-muted-foreground truncate" title={r.name}>
+                        {r.name}
+                      </p>
+                      <p className="text-2xl font-bold text-foreground mt-1">
+                        {aggregated.specialTotals[r.recipeKey] || 0}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-4 border-t border-muted/50">
               <div className="bg-muted rounded-xl p-4 text-center">
                 <p className="text-sm font-semibold text-muted-foreground">Staff B</p>
                 <p className="text-2xl font-bold mt-1">{aggregated.staffB}</p>
