@@ -48,6 +48,7 @@ export const NAV_ITEMS = {
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Census Entry", url: "/census", icon: ClipboardList },
     { title: "Census Submissions", url: "/census/submissions", icon: FileText },
+    { title: "Consolidated Diet Sheet", url: "/reports/consolidated-diet-sheet", icon: FileText },
   ],
 
   SUBJECT_CLERK: [
@@ -80,6 +81,7 @@ export const NAV_ITEMS = {
     { title: "Admin Diet Cycle", url: "/admin/diet-cycle", icon: ListTree },
     { title: "Admin Diet Type", url: "/admin/diet-types", icon: Utensils },
     { title: "Admin Items", url: "/admin/items", icon: Package },
+    { title: "Admin Norm Weights", url: "/admin/norm-weights", icon: Scale },
     { title: "Admin Recipes", url: "/admin/recipes", icon: BookOpen },
     { title: "Admin Wards", url: "/admin/wards", icon: Building2 },
     { title: "Issue Reports", url: "/admin/reports", icon: AlertTriangle },
@@ -108,6 +110,13 @@ export const DASHBOARD_CARDS = {
       url: "/census/submissions",
       color: "text-badge-hospital",
     },
+    {
+      title: "Consolidated Diet Sheet",
+      description: "View the consolidated diet sheet for all wards",
+      icon: FileText,
+      url: "/reports/consolidated-diet-sheet",
+      color: "text-badge-diet",
+    }
   ],
   SUBJECT_CLERK: [
     {

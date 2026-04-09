@@ -27,6 +27,15 @@ const AppSidebar = () => {
 
   const navItems = NAV_ITEMS[role] || [];
 
+  const activeItemUrl =
+    navItems
+      .filter(
+        (item) =>
+          location.pathname === item.url ||
+          location.pathname.startsWith(item.url + "/")
+      )
+      .sort((a, b) => b.url.length - a.url.length)[0]?.url || null;
+
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="p-4 flex flex-row items-center gap-3">
@@ -60,9 +69,7 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
-                const isActive =
-                  location.pathname === item.url ||
-                  location.pathname.startsWith(item.url + "/");
+                const isActive = activeItemUrl === item.url;
 
                 return (
                   <SidebarMenuItem key={item.url}>
@@ -70,11 +77,6 @@ const AppSidebar = () => {
                       asChild
                       isActive={isActive}
                       tooltip={item.title}
-                      className={
-                        isActive
-                          ? "bg-sidebar-accent text-sidebar-primary font-semibold border-l-[3px] border-sidebar-primary rounded-none"
-                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground border-l-[3px] border-transparent"
-                      }
                     >
                       <Link to={item.url} className="touch-target">
                         <item.icon className="h-5 w-5 shrink-0" />

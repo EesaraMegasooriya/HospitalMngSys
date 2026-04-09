@@ -102,7 +102,6 @@ const CensusSubmissions = () => {
     return key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
   };
 
-  // Sort submissions numerically by Ward Name
   const sortedSubmissions = useMemo(() => {
     return [...(submissions || [])].sort((a, b) => 
       (a.wardName || "").localeCompare(b.wardName || "", undefined, { numeric: true, sensitivity: 'base' })
@@ -215,7 +214,12 @@ const CensusSubmissions = () => {
                     </TableCell>
 
                     <TableCell className="py-5 text-center font-bold">
-                      {entry.totalPatients}
+                      {/* 👇 Display a badge instead of '0' to make it clear this is an empty submission */}
+                      {entry.totalPatients === 0 ? (
+                        <Badge variant="outline" className="text-muted-foreground border-dashed">0 Patients</Badge>
+                      ) : (
+                        entry.totalPatients
+                      )}
                     </TableCell>
 
                     <TableCell className="py-5 text-center hidden sm:table-cell">
@@ -262,22 +266,29 @@ const CensusSubmissions = () => {
               </DialogHeader>
 
               <div className="space-y-6 mt-4">
-                <div>
-                  <h4 className="text-lg font-semibold mb-3 border-b pb-2">Patient Diets</h4>
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-                    {Object.entries(selectedEntry.diets || {}).map(([key, value]) => (
-                      <div key={key} className="flex justify-between text-lg py-1">
-                        <span className="text-muted-foreground">{getDietLabel(key)}</span>
-                        <span className="font-semibold">{value || 0}</span>
-                      </div>
-                    ))}
+                {/* 👇 Clearly indicate if no patient meals were requested */}
+                {selectedEntry.totalPatients === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground text-lg italic border-b mb-4">
+                    No patient meals requested for this ward today.
                   </div>
+                ) : (
+                  <div>
+                    <h4 className="text-lg font-semibold mb-3 border-b pb-2">Patient Diets</h4>
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                      {Object.entries(selectedEntry.diets || {}).map(([key, value]) => (
+                        <div key={key} className="flex justify-between text-lg py-1">
+                          <span className="text-muted-foreground">{getDietLabel(key)}</span>
+                          <span className="font-semibold">{value || 0}</span>
+                        </div>
+                      ))}
+                    </div>
 
-                  <div className="flex justify-between pt-3 mt-4 border-t text-xl font-bold">
-                    <span>Total</span>
-                    <span className="text-primary">{selectedEntry.totalPatients}</span>
+                    <div className="flex justify-between pt-3 mt-4 border-t text-xl font-bold">
+                      <span>Total</span>
+                      <span className="text-primary">{selectedEntry.totalPatients}</span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {Object.values(selectedEntry.special || {}).some((v) => Number(v) > 0) && (
                   <div>

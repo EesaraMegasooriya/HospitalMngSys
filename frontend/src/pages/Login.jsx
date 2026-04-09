@@ -128,12 +128,15 @@ function Login() {
       {/* ── LEFT PANEL (Desktop Only) ── */}
       <div className="hidden lg:block lg:w-[50%] relative overflow-hidden">
         <img
-          src={HospitalImg}
-          alt="District General Hospital Gampaha"
-          className="absolute inset-0 w-full h-full object-cover object-left"
-        />
+  src={HospitalImg}
+  alt="District General Hospital Gampaha"
+  className="absolute inset-0 w-full h-full object-cover object-left"
+/>
 
-        <div className="absolute inset-0 flex flex-col justify-between p-10">
+{/* Dark overlay */}
+<div className="absolute inset-0 bg-black/45" />
+
+<div className="absolute inset-0 flex flex-col justify-between p-10 z-10">
           {/* ── TOP: Logo ── */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/12 border border-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0">

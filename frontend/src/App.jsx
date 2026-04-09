@@ -14,6 +14,7 @@ import Unauthorized from "@/pages/Unauthorized";
 
 import CensusEntry from "@/pages/CensusEntry";
 import CensusSubmissions from "@/pages/CensusSubmissions";
+import ConsolidatedDietSheet from "@/pages/ConsolidatedDietSheet";
 
 import Calculations from "@/pages/Calculations";
 import CalculationResults from "@/pages/CalculationResults";
@@ -46,6 +47,7 @@ import Backups from "@/pages/Backups";
 import SystemSettings from "@/pages/SystemSettings";
 
 import NotFound from "@/pages/NotFound";
+
 
 const queryClient = new QueryClient();
 
@@ -89,6 +91,14 @@ function App() {
                 element={
                   <Page>
                     <CensusSubmissions />
+                  </Page>
+                }
+              />
+              <Route
+                path="/reports/consolidated-diet-sheet"
+                element={
+                  <Page>
+                    <ConsolidatedDietSheet />
                   </Page>
                 }
               />
