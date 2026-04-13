@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, ChevronsUpDown, HelpCircle, Plus, Save, Send } from "lucide-react";
+import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, ChevronsUpDown, HelpCircle, Plus, Save, Search, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTodaySL } from "@/lib/date-utils";
 
@@ -90,6 +90,7 @@ const CensusEntryPage = () => {
   const [status, setStatus] = useState("not_started");
 
   const [extrasOpen, setExtrasOpen] = useState(false);
+  const [extraSearchQuery, setExtraSearchQuery] = useState(""); // 👈 Added state for search bar
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -379,6 +380,17 @@ const CensusEntryPage = () => {
     });
   }, [wards]);
 
+  // 👇 Added filtering logic for the search bar
+  const filteredExtraItems = useMemo(() => {
+    if (!extraSearchQuery.trim()) return extraItemsMaster;
+    return extraItemsMaster.filter((item) => item.name.toLowerCase().includes(extraSearchQuery.toLowerCase()));
+  }, [extraItemsMaster, extraSearchQuery]);
+
+  const filteredCustomExtras = useMemo(() => {
+    if (!extraSearchQuery.trim()) return customExtras;
+    return customExtras.filter((item) => item.name.toLowerCase().includes(extraSearchQuery.toLowerCase()));
+  }, [customExtras, extraSearchQuery]);
+
   return (
     <div className="space-y-4 pb-36 md:pb-6">
       <h1 className="text-heading-lg text-foreground">Census Entry</h1>
@@ -534,6 +546,7 @@ const CensusEntryPage = () => {
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-heading-sm">Special Requests</CardTitle></CardHeader>
                 <CardContent>
+                
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
                     {recipesMaster.map((item) => {
                       const idx = refIdx++;
@@ -541,7 +554,7 @@ const CensusEntryPage = () => {
                         <div key={item.key} className="flex items-center gap-1 sm:gap-2 md:gap-3">
                           <Label className="text-base font-semibold whitespace-nowrap flex-shrink-0">{item.name}</Label>
                           <NumField
-                            className="text-primary border-neutral-700 bg-white max-w-[9px] sm:max-w-[110px] md:max-w-[120px]"
+                            className="text-primary border-neutral-700 focus:border-primary bg-white max-w-[9px] sm:max-w-[110px] md:max-w-[120px]"
                             disabled={isReadOnly}
                             value={special[item.key] ?? ""}
                             onChange={(v) => !isReadOnly && setSpecial((s) => ({ ...s, [item.key]: v }))}
@@ -566,16 +579,34 @@ const CensusEntryPage = () => {
                     </CardHeader>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <CardContent className="pt-0">
+                    <CardContent className="pt-0 space-y-4">
+                      
+                      {/* 👇 Inserted Search Bar for Extra Items */}
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                          placeholder="Search extra items..."
+                          value={extraSearchQuery}
+                          onChange={(e) => setExtraSearchQuery(e.target.value)}
+                          className="pl-10 h-11 text-base border-slate-300 focus:border-primary bg-background"
+                        />
+                      </div>
+
                       <div className="border rounded-lg overflow-hidden">
                         <div className="grid grid-cols-[1fr_80px_50px] sm:grid-cols-[1fr_120px_80px] gap-2 sm:gap-4 bg-muted px-3 sm:px-5 py-3 text-xs sm:text-base font-semibold text-muted-foreground">
                           <span>Item</span><span className="text-center">Qty</span><span className="text-center">Unit</span>
                         </div>
-                        {extraItemsMaster.map((item) => {
+                        
+                        {filteredExtraItems.length === 0 && filteredCustomExtras.length === 0 && (
+                          <div className="p-6 text-center text-muted-foreground">No matching items found.</div>
+                        )}
+
+                        {filteredExtraItems.map((item) => {
                           const idx = refIdx++;
                           return (
                             <div key={item.id} className="grid grid-cols-[1fr_80px_50px] sm:grid-cols-[1fr_120px_80px] gap-2 sm:gap-4 px-3 sm:px-5 py-2 sm:py-3 border-t items-center">
                               <span className="text-sm sm:text-lg font-medium">{item.name}</span>
+                              
                               <NumField
                                 disabled={isReadOnly}
                                 value={extras[item.name] ?? ""}
@@ -588,13 +619,14 @@ const CensusEntryPage = () => {
                             </div>
                           );
                         })}
-                        {customExtras.map((item, i) => (
+                        {filteredCustomExtras.map((item, i) => (
                           <div key={`custom-${i}`} className="grid grid-cols-[1fr_80px_50px] sm:grid-cols-[1fr_120px_80px] gap-2 sm:gap-4 px-3 sm:px-5 py-2 sm:py-3 border-t items-center bg-accent/30">
                             <span className="text-sm sm:text-lg font-medium">{item.name}</span>
                             <NumField
                               disabled={isReadOnly}
                               value={item.quantity ?? ""}
-                              onChange={(v) => !isReadOnly && setCustomExtras((prev) => prev.map((ce, j) => j === i ? { ...ce, quantity: v } : ce))}
+                              
+                              onChange={(v) => !isReadOnly && setCustomExtras((prev) => prev.map((ce) => ce.name === item.name ? { ...ce, quantity: v } : ce))}
                               className="w-full text-primary border-neutral-700 focus:border-primary"
                             />
                             <span className="text-sm sm:text-base font-medium text-muted-foreground text-center">{item.unit}</span>
@@ -616,8 +648,6 @@ const CensusEntryPage = () => {
                   <Button variant="outline" className="h-12 text-base font-semibold touch-target w-full sm:w-auto" disabled={!wardId || savingDraft} onClick={saveDraft}>
                     <Save className="h-5 w-5 mr-2" /> {savingDraft ? "Saving..." : "Save Draft"}
                   </Button>
-                  
-                  {/* 👇 Removed totalPatients === 0 restriction so 0 patient wards can be submitted */}
                   <Button
                     className={cn("flex-1 h-12 text-base font-semibold touch-target w-full sm:w-auto", status === "submitted" ? "bg-accent text-accent-foreground hover:bg-accent/90" : "")}
                     disabled={overCapacity || submitting}
@@ -668,6 +698,7 @@ const CensusEntryPage = () => {
                   <Button
                     className={cn("h-12 px-8 touch-target text-base font-semibold w-full sm:w-auto", staffStatus === "submitted" ? "bg-accent text-accent-foreground hover:bg-accent/90" : "")}
                     onClick={handleSubmitStaff}
+                    disabled={ (parseInt(staffMeals.breakfast, 10) || 0) + (parseInt(staffMeals.lunch, 10) || 0) + (parseInt(staffMeals.dinner, 10) || 0) === 0}
                   >
                     <Send className="h-5 w-5 mr-2" /> {staffStatus === "submitted" ? "Update Staff Meals" : "Submit Staff Meals"}
                   </Button>
@@ -693,7 +724,6 @@ const CensusEntryPage = () => {
                   : `Are you sure you want to submit ${ward?.name}'s data?`}
               </span>
 
-              {/* 👇 Warning shown if submitting a zero patient count */}
               {totalPatients === 0 && (
                 <span className="p-3 bg-warning/10 text-warning rounded-lg border border-warning/20 font-semibold flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5" />
