@@ -310,3 +310,13 @@ exports.getCookSheet = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch cook sheet" });
   }
 };
+
+exports.getHistory = async (req, res) => {
+  try {
+    const history = await calculationModel.getDailyHistory();
+    res.status(200).json({ history });
+  } catch (error) {
+    console.error("GET HISTORY ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch daily history" });
+  }
+};

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate,useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,9 @@ const today = getTodaySL();
 const CalculationResults = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-
+  const [searchParams] = useSearchParams(); 
+  const urlDate = searchParams.get("date"); 
+  const targetDate = urlDate || today; 
   const [loading, setLoading] = useState(true);
   const [generatingPO, setGeneratingPO] = useState(false);
   const [activeTab, setActiveTab] = useState(null);
@@ -55,7 +57,7 @@ const CalculationResults = () => {
         setLoading(true);
 
         const [calcRes, itemsRes] = await Promise.all([
-          fetch(`${API_BASE}/calculations/results?date=${today}`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE}/calculations/results?date=${targetDate}`, { headers: getAuthHeaders() }),
           fetch(`${API_BASE}/items`, { headers: getAuthHeaders() }),
         ]);
 
@@ -120,7 +122,7 @@ const CalculationResults = () => {
     setBreakdownItem(item);
     setLoadingBreakdown(true);
     try {
-      const res = await fetch(`${API_BASE}/calculations/breakdown/${item.id}?date=${today}`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/calculations/breakdown/${item.id}?date=${targetDate}`, { headers: getAuthHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to fetch breakdown");
       setBreakdownData(data);
@@ -191,7 +193,7 @@ const CalculationResults = () => {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          date: calcRun.date || today,
+          date: calcRun.date || targetDate,
           calcRunId: calcRun.id,
           items: finalSelectedItems,
         }),

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -36,9 +37,10 @@ const statusConfig = {
 
 const CensusSubmissions = () => {
   const { toast } = useToast();
-
+  const [searchParams] = useSearchParams(); 
+  const urlDate = searchParams.get("date"); 
   const today = getTodaySL();
-  const [filterDate, setFilterDate] = useState(today);
+  const [filterDate, setFilterDate] = useState(urlDate ||today);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [staffMeals, setStaffMeals] = useState(null);

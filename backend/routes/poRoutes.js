@@ -20,4 +20,10 @@ router.post("/:id/revise", requireAuth, poController.reviseOrder);      // POST 
 router.post("/:id/approve", requireAuth, poController.approveOrder);    // POST /api/orders/123/approve
 router.post("/:id/reject",  requireAuth, poController.rejectOrder);     // POST /api/orders/123/reject
 
+//  EMAIL ROUTE 
+router.post("/:id/email",   requireAuth, poController.emailPurchaseOrder); // POST /api/orders/123/email
+
+// 
+router.get("/:id/pdf", requireAuth, poController.downloadPurchaseOrderPDF); // GET /api/orders/123/pdf
+
 module.exports = router;

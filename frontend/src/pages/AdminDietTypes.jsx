@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-// 👇 Added Ban and CheckCircle for consistent action icons
+//  Added Ban and CheckCircle for consistent action icons
 import { Plus, Edit2, Ban, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ const getAuthHeaders = () => ({
   Authorization: `Bearer ${sessionStorage.getItem("token")}`,
 });
 
-// 👇 Added rich theme colors for consistency
+// Added rich theme colors for consistency
 const STATUS_STYLE = {
   active: "bg-success text-success-foreground hover:bg-success border-transparent font-medium",
   inactive: "bg-error-bg text-destructive hover:bg-error-bg border-transparent font-medium",
@@ -104,8 +104,8 @@ const AdminDietTypes = () => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
-
-  // 👇 Sort types: Active at the top, Inactive at the bottom. Also sorts by displayOrder.
+  
+  // Sort types: Active at the top, Inactive at the bottom. Also sorts by displayOrder.
   const sortedTypes = [...types].sort((a, b) => {
     if (a.active && !b.active) return -1;
     if (!a.active && b.active) return 1;

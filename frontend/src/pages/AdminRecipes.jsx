@@ -6,8 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Plus, Trash2, Edit2 } from "lucide-react";
+import { Save, Plus, Trash2, Edit2, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const API_BASE = `${import.meta.env.VITE_API_BASE || "http://localhost:5050/api"}/recipes`;
 
@@ -17,6 +20,28 @@ const getAuthHeaders = () => {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+};
+
+// 👇 Mapping to enforce base unit entry for bulk items
+const UNIT_TO_BASE_LABEL = {
+  "Kg": "g (Grams)",
+  "g": "g (Grams)",
+  "L": "ml (Milliliters)",
+  "ml": "ml (Milliliters)",
+};
+
+const getBaseUnitLabel = (displayUnit) => {
+  return UNIT_TO_BASE_LABEL[displayUnit] || displayUnit;
+};
+
+// 👇 New helper to display the correct short unit in the table and form box
+const getBaseUnitShort = (displayUnit) => {
+  if (!displayUnit) return "";
+  const map = {
+    "Kg": "g",
+    "L": "ml",
+  };
+  return map[displayUnit] || displayUnit;
 };
 
 const AdminRecipes = () => {
@@ -30,6 +55,7 @@ const AdminRecipes = () => {
 
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
   const [ingredientDialogOpen, setIngredientDialogOpen] = useState(false);
+  const [ingredientSearchOpen, setIngredientSearchOpen] = useState(false); 
 
   const [editingRecipe, setEditingRecipe] = useState(null);
   const [newRecipe, setNewRecipe] = useState({ recipeKey: "", name: "" });
@@ -42,6 +68,7 @@ const AdminRecipes = () => {
   });
 
   const selectedRecipe = recipes.find((r) => String(r.id) === String(selectedRecipeId));
+  const selectedIngredientItem = items.find((i) => String(i.id) === String(ingredientForm.itemId));
 
   const fetchRecipes = async () => {
     try {
@@ -222,17 +249,14 @@ const AdminRecipes = () => {
     }
   };
 
-  // 👇 Sort Recipes Alphabetically
   const sortedRecipes = [...recipes].sort((a, b) => 
     (a.name || "").localeCompare(b.name || "")
   );
 
-  // 👇 Sort Ingredients Alphabetically
   const sortedIngredients = [...ingredients].sort((a, b) => 
     (a.itemNameEn || "").localeCompare(b.itemNameEn || "")
   );
 
-  // 👇 Sort Items in Dropdown Alphabetically
   const sortedItems = [...items].sort((a, b) => 
     (a.nameEn || "").localeCompare(b.nameEn || "")
   );
@@ -244,7 +268,6 @@ const AdminRecipes = () => {
       <Card>
         <CardContent className="pt-4 flex flex-wrap gap-3">
           <Select value={selectedRecipeId} onValueChange={setSelectedRecipeId}>
-            {/* 👇 Increased size to h-12 and text-base */}
             <SelectTrigger className="w-72 h-12 text-base touch-target cursor-pointer">
               <SelectValue placeholder="Select recipe" />
             </SelectTrigger>
@@ -298,7 +321,6 @@ const AdminRecipes = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* 👇 Mapped over sortedIngredients with typography upgrades */}
                   {sortedIngredients.map((ing) => (
                     <TableRow 
                       key={ing.id} 
@@ -307,7 +329,10 @@ const AdminRecipes = () => {
                       <TableCell className="font-medium py-5 text-center">{ing.itemNameEn}</TableCell>
                       <TableCell className="text-muted-foreground py-5 text-center">{ing.itemNameSi}</TableCell>
                       <TableCell className="py-5 text-center">{ing.normPerPatient}</TableCell>
-                      <TableCell className="text-muted-foreground py-5 text-center">{ing.unit}</TableCell>
+                      
+                      {/* 👇 Visually translated to the correct base unit in the table */}
+                      <TableCell className="text-muted-foreground py-5 text-center">{getBaseUnitShort(ing.unit)}</TableCell>
+                      
                       <TableCell className="py-5">
                         <div className="flex justify-center gap-2">
                           <Button 
@@ -393,45 +418,81 @@ const AdminRecipes = () => {
       </Dialog>
 
       <Dialog open={ingredientDialogOpen} onOpenChange={setIngredientDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{ingredientForm.editId ? "Edit Ingredient" : "Add Ingredient"}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-1.5">
+          <div className="space-y-5 py-2">
+            <div className="space-y-2">
               <Label className="text-base font-semibold">Item</Label>
-              <Select
-                value={ingredientForm.itemId}
-                onValueChange={(v) =>
-                  setIngredientForm((p) => {
-                    const selectedItem = items.find((i) => String(i.id) === String(v));
-                    return {
-                      ...p,
-                      itemId: v,
-                      unit: selectedItem?.unit || p.unit,
-                    };
-                  })
-                }
-                disabled={!!ingredientForm.editId}
-              >
-                <SelectTrigger className="h-11 text-base">
-                  <SelectValue placeholder="Select item from items table" />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* 👇 Mapped over sortedItems */}
-                  {sortedItems.map((item) => (
-                    <SelectItem key={item.id} value={String(item.id)} className="text-base">
-                      {item.nameEn} ({item.nameSi})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              
+              <Popover open={ingredientSearchOpen} onOpenChange={setIngredientSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={ingredientSearchOpen}
+                    className="w-full justify-between h-11 text-base border-slate-300 focus:ring-primary/20 font-normal bg-background"
+                    disabled={!!ingredientForm.editId}
+                  >
+                    <span className="truncate pr-2">
+                      {selectedIngredientItem 
+                        ? `${selectedIngredientItem.nameEn} (${selectedIngredientItem.nameSi})`
+                        : "Search and select an item..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-xl border border-slate-300 z-[100] bg-background" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search item by English or Sinhala name..." className="h-11 text-base border-none focus:ring-0" />
+                    <CommandList className="max-h-[250px]">
+                      <CommandEmpty className="py-6 text-center text-base">No item found.</CommandEmpty>
+                      <CommandGroup>
+                        {sortedItems.map((item) => (
+                          <CommandItem
+                            key={item.id}
+                            value={`${item.nameEn} ${item.nameSi}`}
+                            onSelect={() => {
+                              setIngredientForm((p) => ({
+                                ...p,
+                                itemId: String(item.id),
+                                unit: item.unit,
+                              }));
+                              setIngredientSearchOpen(false);
+                            }}
+                            className="text-base py-2.5 cursor-pointer"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-3 h-5 w-5 text-primary flex-shrink-0",
+                                ingredientForm.itemId === String(item.id) ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="truncate">
+                              {item.nameEn} <span className="text-muted-foreground ml-1">({item.nameSi})</span>
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-base font-semibold">Norm Per Patient</Label>
+            <div className="grid grid-cols-[1fr_80px] gap-4">
+              <div className="space-y-2">
+                <Label className="text-base font-semibold flex items-center flex-wrap gap-2">
+                  Norm Per Patient
+                  {ingredientForm.unit && (
+                    <span className="text-primary bg-primary/10 px-2 py-0.5 rounded text-sm">
+                      (Enter in: {getBaseUnitLabel(ingredientForm.unit)})
+                    </span>
+                  )}
+                </Label>
                 <Input
                   type="number"
                   min={0}
@@ -443,29 +504,29 @@ const AdminRecipes = () => {
                       normPerPatient: parseFloat(e.target.value) || 0,
                     }))
                   }
-                  className="h-11 text-base"
+                  className="h-11 text-base border-slate-300 focus:border-primary"
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label className="text-base font-semibold">Unit</Label>
+                {/* 👇 Display translated Base Unit, readOnly */}
                 <Input
-                  value={ingredientForm.unit}
-                  onChange={(e) =>
-                    setIngredientForm((p) => ({ ...p, unit: e.target.value }))
-                  }
-                  className="h-11 text-base bg-muted/50"
+                  value={getBaseUnitShort(ingredientForm.unit)}
+                  className="h-11 text-base bg-muted/50 border-slate-300 text-center"
                   readOnly
                 />
               </div>
             </div>
           </div>
 
-          <DialogFooter className="mt-2 gap-2">
+          <DialogFooter className="mt-4 gap-2">
             <Button variant="outline" onClick={() => setIngredientDialogOpen(false)} className="touch-target">
               Cancel
             </Button>
-            <Button onClick={saveIngredient} className="touch-target">Save</Button>
+            <Button onClick={saveIngredient} disabled={!ingredientForm.itemId} className="touch-target">
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
