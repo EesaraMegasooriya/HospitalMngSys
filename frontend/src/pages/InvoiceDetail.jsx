@@ -4,7 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Download, Printer, Loader2, ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Download, Printer, Loader2, ArrowLeft, Mail, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5050/api";
@@ -18,9 +21,18 @@ const InvoiceDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [isEmailing, setIsEmailing] = useState(false);
+
+  
+  
+  // 👇 Look for a saved email in Local Storage, otherwise start empty
+  const [emailAddress, setEmailAddress] = useState(() => {
+    return localStorage.getItem("supplierEmail") || "";
+  });
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -28,7 +40,7 @@ const InvoiceDetail = () => {
         const res = await fetch(`${API_BASE}/orders/${id}`, { headers: getAuthHeaders() });
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.message || "Failed to fetch invoice");
+        if (!res.ok) throw new Error(data.message || "Failed to fetch purchase order details");
 
         setInvoice(data.po);
       } catch (error) {
@@ -41,17 +53,75 @@ const InvoiceDetail = () => {
     fetchInvoice();
   }, [id, toast]);
 
+  const handleSendEmail = async () => {
+    if (!emailAddress || !emailAddress.includes("@")) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+
+    setIsEmailing(true);
+    try {
+      const res = await fetch(`${API_BASE}/orders/${id}/email`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ email: emailAddress }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to send email");
+
+      toast({ title: "Email Sent", description: `Purchase Order successfully sent to ${emailAddress}` });
+      
+      // Save email address to Local Storage to remember it next time!
+      localStorage.setItem("supplierEmail", emailAddress);
+      
+      setEmailDialogOpen(false);
+    } catch (error) {
+      toast({ title: "Failed to Send Email", description: error.message, variant: "destructive" });
+    } finally {
+      setIsEmailing(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    setIsDownloadingPDF(true);
+    try {
+      const res = await fetch(`${API_BASE}/orders/${id}/pdf`, {
+        headers: getAuthHeaders(),
+      });
+      
+      if (!res.ok) throw new Error("Failed to generate PDF");
+
+      // Convert the response into a downloadable file blob
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Purchase_Order_${invoice.billNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast({ title: "Success", description: "PDF downloaded successfully" });
+    } catch (error) {
+      toast({ title: "Download Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-3 text-muted-foreground">Loading invoice details...</span>
+        <span className="ml-3 text-muted-foreground">Loading purchase order details...</span>
       </div>
     );
   }
 
   if (!invoice) {
-    return <div className="text-center py-12 text-muted-foreground">Invoice not found.</div>;
+    return <div className="text-center py-12 text-muted-foreground">Purchase order not found.</div>;
   }
 
   const grandTotal = invoice.revisedTotal !== null ? Number(invoice.revisedTotal) : Number(invoice.originalTotal);
@@ -61,14 +131,21 @@ const InvoiceDetail = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center print:hidden">
         <Button variant="ghost" onClick={() => navigate("/invoices")} className="text-muted-foreground">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Invoices
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Purchase Orders
         </Button>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setEmailDialogOpen(true)}>
+            <Mail className="h-4 w-4 mr-2" /> Email PO
+          </Button>
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="h-4 w-4 mr-2" /> Print
           </Button>
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" /> Download PDF
+          <Button variant="outline" onClick={handleDownloadPDF} disabled={isDownloadingPDF}>
+            {isDownloadingPDF ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating...</>
+            ) : (
+                <><Download className="h-4 w-4 mr-2" /> Download PDF</>
+                )}
           </Button>
         </div>
       </div>
@@ -76,7 +153,7 @@ const InvoiceDetail = () => {
       <Card className="max-w-4xl mx-auto print:shadow-none print:border-0 print:max-w-full">
         <CardContent className="p-8 space-y-6">
           <div className="text-center space-y-1">
-            <h1 className="text-heading-md font-bold text-foreground print:text-black">INVOICE</h1>
+            <h1 className="text-heading-md font-bold text-foreground print:text-black">PURCHASE ORDER</h1>
             <p className="text-muted-foreground text-sm print:text-black">Gampaha District General Hospital</p>
           </div>
 
@@ -88,7 +165,7 @@ const InvoiceDetail = () => {
               <p className="text-muted-foreground print:text-black">Gampaha.</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1 print:text-black">Invoice Details</p>
+              <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1 print:text-black">Purchase Order Details</p>
               <p className="text-body print:text-black"><span className="font-semibold">Bill No:</span> {invoice.billNumber}</p>
               <p className="text-body print:text-black"><span className="font-semibold">Date:</span> {invoice.poDate || invoice.date}</p>
               <p className="text-body print:text-black">
@@ -111,7 +188,6 @@ const InvoiceDetail = () => {
             </TableHeader>
             <TableBody>
               {itemsList.map((item, idx) => {
-                // Ensure we use the revised total if the accountant adjusted it
                 const lineTotal = item.revisedTotal !== null && item.revisedTotal !== undefined 
                     ? Number(item.revisedTotal) 
                     : Number(item.totalPrice);
@@ -141,7 +217,7 @@ const InvoiceDetail = () => {
               {itemsList.length === 0 && (
                 <TableRow>
                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground print:text-black">
-                     No items found in this invoice.
+                     No items found in this purchase order.
                    </TableCell>
                 </TableRow>
               )}
@@ -171,6 +247,42 @@ const InvoiceDetail = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Email Dialog Modal */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Purchase Order</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Supplier Email Address</Label>
+              <Input 
+                placeholder="Enter Supplier's Email" 
+                value={emailAddress}
+                onChange={(e) => setEmailAddress(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              This will generate an email containing the Purchase Order summary.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={isEmailing}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendEmail} disabled={isEmailing || !emailAddress}>
+              {isEmailing ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
+              ) : (
+                <><Send className="mr-2 h-4 w-4" /> Send Email</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };

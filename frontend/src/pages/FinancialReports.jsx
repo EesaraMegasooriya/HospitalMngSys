@@ -83,7 +83,7 @@ const FinancialReports = () => {
             <TrendingUp className="h-8 w-8" />
             Accountant Financial Dashboard
           </h1>
-          <p className="text-muted-foreground mt-1">Track finalized invoice expenditures over time.</p>
+          <p className="text-muted-foreground mt-1">Track finalized purchase order expenditures over time.</p>
         </div>
         
         {/* The Filter Dropdown */}
@@ -92,9 +92,13 @@ const FinancialReports = () => {
             <SelectValue placeholder="Select Timeframe" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="1d">Today</SelectItem>
             <SelectItem value="1w">Last 7 Days</SelectItem>
-            <SelectItem value="1m">Last 30 Days</SelectItem>
+            <SelectItem value="1m">Last 1 Month</SelectItem>
+            <SelectItem value="3m">Last 3 Months</SelectItem>
             <SelectItem value="6m">Last 6 Months</SelectItem>
+            <SelectItem value="1y">This Year</SelectItem>
+            <SelectItem value="all">All Time</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -119,7 +123,7 @@ const FinancialReports = () => {
             <CardContent>
               <div className="h-[350px] w-full flex items-center">
                 {reportData.categorySpend.length === 0 ? (
-                  <div className="w-full text-center text-muted-foreground">No received invoices found.</div>
+                  <div className="w-full text-center text-muted-foreground">No received purchase orders found.</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -152,7 +156,7 @@ const FinancialReports = () => {
                 <Activity className="h-5 w-5 text-primary" />
                 Actual Expenditure Trend
               </CardTitle>
-              <CardDescription>Total value of finalized invoices over time</CardDescription>
+              <CardDescription>Total value of finalized purchase orders over time</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[350px] w-full">

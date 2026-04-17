@@ -838,6 +838,46 @@ async function getCalculationResults(calcDate) {
   };
 }
 
+
+async function getDailyHistory() {
+  const result = await pool.query(`
+    SELECT
+        all_dates.d as history_date,
+        COUNT(DISTINCT ce.ward_id) as submitted_wards,
+        MAX(cr.status) as calc_status,
+        MAX(po.id) as po_id,
+        MAX(po.bill_number) as bill_number,
+        MAX(po.status) as po_status,
+        MAX(po.original_total) as original_total,
+        MAX(po.revised_total) as revised_total
+    FROM
+        (
+            SELECT CAST(entry_date AS VARCHAR) as d FROM census_entries
+            UNION
+            SELECT CAST(calc_date AS VARCHAR) as d FROM calculation_runs
+            UNION
+            SELECT CAST(po_date AS VARCHAR) as d FROM purchase_orders
+        ) all_dates
+    LEFT JOIN census_entries ce ON CAST(ce.entry_date AS VARCHAR) = all_dates.d
+    LEFT JOIN calculation_runs cr ON CAST(cr.calc_date AS VARCHAR) = all_dates.d
+    LEFT JOIN purchase_orders po ON CAST(po.po_date AS VARCHAR) = all_dates.d
+    GROUP BY all_dates.d
+    ORDER BY all_dates.d DESC
+    LIMIT 90
+  `);
+  
+  return result.rows.map(row => ({
+    date: row.history_date instanceof Date ? row.history_date.toISOString().split("T")[0] : String(row.history_date).split("T")[0],
+    submittedWards: Number(row.submitted_wards),
+    calcStatus: row.calc_status,
+    poId: row.po_id,
+    billNumber: row.bill_number,
+    poStatus: row.po_status,
+    grandTotal: row.revised_total !== null ? Number(row.revised_total) : Number(row.original_total)
+  }));
+}
+
+
 module.exports = {
   runCalculation,
   getCalculationResults,
@@ -849,4 +889,5 @@ module.exports = {
   calculateRecipes,
   buildGrandTotals,
   buildPOLineItems,
+  getDailyHistory
 };

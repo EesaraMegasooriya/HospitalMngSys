@@ -15,4 +15,7 @@ router.get("/cook-sheet", requireAuth, calculationController.getCookSheet);
 // Get detailed breakdown for a specific item (Subject Clerk)
 router.get("/breakdown/:itemId", requireAuth, calculationController.getItemBreakdown);
 
+// Get historical calculation data for the past 7 days
+router.get("/history", requireAuth, calculationController.getHistory);
+
 module.exports = router;

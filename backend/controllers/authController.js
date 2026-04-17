@@ -22,6 +22,13 @@ exports.register = async (req, res) => {
       });
     }
 
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^_-]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ 
+        message: "Password must be at least 8 characters long and contain one uppercase, one lowercase, one number, and one special character." 
+      });
+    }
+
     if (!ALLOWED_ROLES.has(role)) {
       return res.status(400).json({ message: "Invalid role" });
     }
@@ -255,20 +262,24 @@ exports.setNewPassword = async (req, res) => {
     const userResult = await pool.query("SELECT email, full_name FROM users WHERE id = $1", [userId]);
     const user = userResult.rows[0];
 
-    if (!newPassword || newPassword.length < 6) {
+    // REGEX to enforce password complexity: minimum 8 characters, at least one uppercase letter, one lowercase letter, one number, and one special character
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^_-]).{8,}$/;
+    if (!newPassword || !passwordRegex.test(newPassword)) {
       await writeAudit({
         req,
         action: "USER_SET_PASSWORD_FAILED",
         entity: "users",
         entity_id: String(userId),
         user_name: user ? user.full_name : "System",
-        details: { reason: "Password too short" },
+        details: { reason: "Password did not meet complexity requirements" },
         severity: "security",
         status_code: 400,
         success: false,
       });
 
-      return res.status(400).json({ message: "Password must be at least 6 characters long." });
+      return res.status(400).json({ 
+        message: "Password must be at least 8 characters long and contain one uppercase, one lowercase, one number, and one special character." 
+      });
     }
 
     // Hash the new password
@@ -281,7 +292,7 @@ exports.setNewPassword = async (req, res) => {
       [hashedPassword, userId]
     );
 
-    // ✅ Log the successful password change
+    // Log the successful password change
     await writeAudit({
       req,
       action: "USER_SET_NEW_PASSWORD",
@@ -292,7 +303,7 @@ exports.setNewPassword = async (req, res) => {
         message: "User successfully set their own secure password",
         email: user?.email
       },
-      severity: "security", // Flagged as security so it shows up red in your UI
+      severity: "security", 
       status_code: 200,
       success: true,
     });

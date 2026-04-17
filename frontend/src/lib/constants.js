@@ -48,6 +48,7 @@ export const NAV_ITEMS = {
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Census Entry", url: "/census", icon: ClipboardList },
     { title: "Census Submissions", url: "/census/submissions", icon: FileText },
+    { title: "Past Census History", url: "/census/history", icon: History },
     { title: "Consolidated Diet Sheet", url: "/reports/consolidated-diet-sheet", icon: FileText },
   ],
 
@@ -55,23 +56,26 @@ export const NAV_ITEMS = {
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Calculations", url: "/calculations", icon: Calculator },
     { title: "Calculation Results", url: "/calculations/results", icon: FileText },
+    { title: "Past Calculations History", url: "/calculations/history", icon: History },
     { title: "Orders", url: "/orders", icon: ShoppingCart },
     
   ],
 
   ACCOUNTANT: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Account Price Management", url: "/accountant/prices", icon: DollarSign },
+    { title: "Financial Reports", url: "/reports", icon: BarChart3 },
+    { title: "Price Management", url: "/accountant/prices", icon: DollarSign },
     { title: "Approvals", url: "/approvals", icon: CheckSquare },
-    { title: "Invoices", url: "/invoices", icon: Receipt },
+    { title: "Purchase Orders", url: "/purchase-orders", icon: Receipt },
     { title: "Issue Reports", url: "/accountant/reports", icon: AlertTriangle },
+    { title: "Daily Archive", url: "/accountant/history", icon: History },
   ],
 
   SYSTEM_ADMIN: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "System Users", url: "/system/users", icon: Users },
     { title: "Audit Logs", url: "/system/audit", icon: History },
-    { title: "Settings", url: "/system/settings", icon: Settings },
+    //{ title: "Settings", url: "/system/settings", icon: Settings },
     
   ],
 
@@ -150,8 +154,8 @@ export const DASHBOARD_CARDS = {
       color: "text-warning",
     },
     {
-      title: "Invoices",
-      description: "View and download invoices",
+      title: "Purchase Orders",
+      description: "View and manage purchase orders",
       icon: Receipt,
       url: "/invoices",
       color: "text-badge-hospital",
@@ -253,12 +257,12 @@ export const DASHBOARD_CARDS = {
       url: "/system/backups",
       color: "text-badge-hospital",
     },
-    {
-      title: "Settings",
-      description: "Configure system settings",
-      icon: Settings,
-      url: "/system/settings",
-      color: "text-primary",
-    },
+    // {
+    //   title: "Settings",
+    //   description: "Configure system settings",
+    //   icon: Settings,
+    //   url: "/system/settings",
+    //   color: "text-primary",
+    // },
   ],
 };

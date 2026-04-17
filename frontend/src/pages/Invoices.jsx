@@ -27,7 +27,7 @@ const Invoices = () => {
         const res = await fetch(`${API_BASE}/orders`, { headers: getAuthHeaders() });
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.message || "Failed to load invoices");
+        if (!res.ok) throw new Error(data.message || "Failed to load purchase order history");
 
         const history = (data.orders || []).filter(order => 
           ['approved', 'partially_delivered', 'delivered'].includes(order.status)
@@ -44,7 +44,7 @@ const Invoices = () => {
     fetchInvoices();
   }, [toast]);
 
-  // 👇 Auto-Sort Invoices: Newest dates first, then descending by Bill Number
+  // 👇 Auto-sort purchase orders: newest dates first, then descending by bill number
   const sortedInvoices = [...invoices].sort((a, b) => {
     const dateA = a.poDate || a.date;
     const dateB = b.poDate || b.date;
@@ -57,7 +57,7 @@ const Invoices = () => {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-3 text-lg text-muted-foreground">Loading invoice history...</span>
+        <span className="ml-3 text-lg text-muted-foreground">Loading purchase order history...</span>
       </div>
     );
   }
@@ -67,7 +67,7 @@ const Invoices = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-heading-lg font-bold text-foreground flex items-center gap-3">
           <FileText className="h-7 w-7 text-primary" />
-          Supplier Invoice History
+          Supplier Purchase Order History
         </h1>
       </div>
       
@@ -95,7 +95,7 @@ const Invoices = () => {
                   <TableRow 
                     key={inv.id} 
                     className="text-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/invoices/${inv.id}`)}
+                    onClick={() => navigate(`/purchase-orders/${inv.id}`)}
                   >
                     <TableCell className="font-bold text-center py-5">{inv.billNumber}</TableCell>
                     <TableCell className="text-center py-5 text-muted-foreground">{inv.poDate || inv.date}</TableCell>
@@ -116,20 +116,20 @@ const Invoices = () => {
                     <TableCell className="py-5">
                       <div className="flex justify-center gap-2">
                         <Button 
-                          title="View Invoice"
+                          title="View Purchase Order"
                           variant="ghost" 
                           size="icon" 
-                          onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${inv.id}`); }} 
+                          onClick={(e) => { e.stopPropagation(); navigate(`/purchase-orders/${inv.id}`); }} 
                           className="touch-target"
                         >
                           <Eye className="h-5 w-5" />
                         </Button>
                         <Button 
-                          title="Print Invoice"
+                          title="Print Purchase Order"
                           variant="ghost" 
                           size="icon" 
                           className="touch-target" 
-                          onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${inv.id}`); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/purchase-orders/${inv.id}`); }}
                         >
                           <Printer className="h-5 w-5" />
                         </Button>
@@ -141,7 +141,7 @@ const Invoices = () => {
               {sortedInvoices.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-lg text-muted-foreground py-12">
-                    No generated invoices found. Approve a Purchase Order first.
+                    No generated Purchase Orders found. Approve a Purchase Order first.
                   </TableCell>
                 </TableRow>
               )}
