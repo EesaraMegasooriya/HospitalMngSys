@@ -63,18 +63,19 @@ export const NAV_ITEMS = {
 
   ACCOUNTANT: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Account Price Management", url: "/accountant/prices", icon: DollarSign },
+    { title: "Financial Reports", url: "/reports", icon: BarChart3 },
+    { title: "Price Management", url: "/accountant/prices", icon: DollarSign },
     { title: "Approvals", url: "/approvals", icon: CheckSquare },
     { title: "Purchase Orders", url: "/purchase-orders", icon: Receipt },
-    { title: "Daily Archive", url: "/accountant/history", icon: History },
     { title: "Issue Reports", url: "/accountant/reports", icon: AlertTriangle },
+    { title: "Daily Archive", url: "/accountant/history", icon: History },
   ],
 
   SYSTEM_ADMIN: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "System Users", url: "/system/users", icon: Users },
     { title: "Audit Logs", url: "/system/audit", icon: History },
-    { title: "Settings", url: "/system/settings", icon: Settings },
+    //{ title: "Settings", url: "/system/settings", icon: Settings },
     
   ],
 
@@ -256,12 +257,12 @@ export const DASHBOARD_CARDS = {
       url: "/system/backups",
       color: "text-badge-hospital",
     },
-    {
-      title: "Settings",
-      description: "Configure system settings",
-      icon: Settings,
-      url: "/system/settings",
-      color: "text-primary",
-    },
+    // {
+    //   title: "Settings",
+    //   description: "Configure system settings",
+    //   icon: Settings,
+    //   url: "/system/settings",
+    //   color: "text-primary",
+    // },
   ],
 };

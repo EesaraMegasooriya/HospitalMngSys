@@ -60,7 +60,8 @@ const DailyHistory = () => {
                     {day.submittedWards > 0 ? <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-base px-3 py-1">{day.submittedWards} Wards</Badge> : <span className="text-muted-foreground italic text-sm">No Census</span>}
                   </TableCell>
                   <TableCell className="text-center py-5">
-                    {day.calcStatus ? <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-base px-3 py-1 uppercase">{day.calcStatus}</Badge> : <span className="text-muted-foreground italic text-sm">—</span>}
+                    {day.calcStatus ? 
+                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-base px-3 py-1 uppercase">{day.calcStatus}</Badge> : <span className="text-muted-foreground italic text-sm">—</span>}
                   </TableCell>
                   <TableCell className="text-center py-5">
                     {day.poStatus === 'approved' && <Badge variant="outline" className="bg-blue-50/50 text-blue-600 border-blue-600 text-base px-3 py-1">Approved</Badge>}

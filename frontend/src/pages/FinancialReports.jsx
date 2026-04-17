@@ -92,9 +92,13 @@ const FinancialReports = () => {
             <SelectValue placeholder="Select Timeframe" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="1d">Today</SelectItem>
             <SelectItem value="1w">Last 7 Days</SelectItem>
-            <SelectItem value="1m">Last 30 Days</SelectItem>
+            <SelectItem value="1m">Last 1 Month</SelectItem>
+            <SelectItem value="3m">Last 3 Months</SelectItem>
             <SelectItem value="6m">Last 6 Months</SelectItem>
+            <SelectItem value="1y">This Year</SelectItem>
+            <SelectItem value="all">All Time</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -72,7 +72,7 @@ const InvoiceDetail = () => {
 
       toast({ title: "Email Sent", description: `Purchase Order successfully sent to ${emailAddress}` });
       
-      // 👇 Save this email address to Local Storage so we remember it next time!
+      // Save email address to Local Storage to remember it next time!
       localStorage.setItem("supplierEmail", emailAddress);
       
       setEmailDialogOpen(false);

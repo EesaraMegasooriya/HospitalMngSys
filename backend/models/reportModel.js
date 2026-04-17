@@ -5,8 +5,13 @@ exports.getAccountantDashboardData = async (timeframe) => {
   try {
     // 1. Determine the date filter based on the dropdown selection
     let dateFilter = "CURRENT_DATE - INTERVAL '6 months'";
-    if (timeframe === '1w') dateFilter = "CURRENT_DATE - INTERVAL '7 days'";
-    if (timeframe === '1m') dateFilter = "CURRENT_DATE - INTERVAL '1 month'";
+    if (timeframe === '1d') dateFilter = "CURRENT_DATE"; // Today
+    else if (timeframe === '1w') dateFilter = "CURRENT_DATE - INTERVAL '7 days'";
+    else if (timeframe === '1m') dateFilter = "CURRENT_DATE - INTERVAL '1 month'";
+    else if (timeframe === '3m') dateFilter = "CURRENT_DATE - INTERVAL '3 months'";
+    else if (timeframe === '6m') dateFilter = "CURRENT_DATE - INTERVAL '6 months'";
+    else if (timeframe === '1y') dateFilter = "CURRENT_DATE - INTERVAL '1 year'";
+    else if (timeframe === 'all') dateFilter = "'2000-01-01'"; // Catch everything!
 
     // 2. Expenditure by Category (Filtered by timeframe)
     const categoryRes = await client.query(`
@@ -24,22 +29,23 @@ exports.getAccountantDashboardData = async (timeframe) => {
 
     // 3. Invoice Spending Trend (Dynamically grouped by Day or Month)
     let trendQuery = "";
-    if (timeframe === '1w') {
-      // Weekly: Group by Day (e.g., Mon, Tue, Wed)
-      trendQuery = `
-        SELECT TO_CHAR(invoice_date, 'Dy') as label, invoice_date as sort_date, SUM(billed_total) as total
-        FROM invoices WHERE status = 'received' AND invoice_date >= ${dateFilter}
-        GROUP BY invoice_date ORDER BY sort_date ASC
-      `;
-    } else if (timeframe === '1m') {
-      // Monthly: Group by specific Date (e.g., 14 Mar, 15 Mar)
+    if (timeframe === '1d' || timeframe === '1w' || timeframe === '1m') {
+      // For short timeframes: Group by exact date
       trendQuery = `
         SELECT TO_CHAR(invoice_date, 'DD Mon') as label, invoice_date as sort_date, SUM(billed_total) as total
         FROM invoices WHERE status = 'received' AND invoice_date >= ${dateFilter}
         GROUP BY invoice_date ORDER BY sort_date ASC
       `;
+    } else if (timeframe === 'all') {
+      // For All Time: Group by Month and Year
+      trendQuery = `
+        SELECT TO_CHAR(invoice_date, 'Mon YYYY') as label, TO_CHAR(invoice_date, 'YYYY-MM') as sort_date, SUM(billed_total) as total
+        FROM invoices WHERE status = 'received' AND invoice_date >= ${dateFilter}
+        GROUP BY TO_CHAR(invoice_date, 'Mon YYYY'), TO_CHAR(invoice_date, 'YYYY-MM')
+        ORDER BY sort_date ASC
+      `;
     } else {
-      // 6 Months: Group by Month (e.g., Jan, Feb, Mar)
+      // For 3m, 6m, 1y: Group by Month
       trendQuery = `
         SELECT TO_CHAR(invoice_date, 'Mon') as label, EXTRACT(MONTH FROM invoice_date) as sort_date, SUM(billed_total) as total
         FROM invoices WHERE status = 'received' AND invoice_date >= ${dateFilter}
